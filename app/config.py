@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     openrouter_key: Optional[str] = Field(default=None, env="OPENROUTER_KEY")
     mcp_server_url: Optional[str] = Field(default=None, env="MCP_SERVER_URL")
     mcp_api_key: Optional[str] = Field(default=None, env="MCP_API_KEY")
+    initial_system_prompt: Optional[str] = Field(
+        default=None,
+        env="INITIAL_SYSTEM_PROMPT",
+        description="Optional system prompt injected when a new session is created.",
+    )
 
     redis_url: Optional[str] = Field(default=None, env="REDIS_URL")
 
