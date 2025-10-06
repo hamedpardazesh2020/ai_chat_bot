@@ -52,6 +52,48 @@ manager.set_default("openai")
 set_provider_manager(manager)
 ```
 
+To connect an MCP server, instantiate `MCPChatProvider` with the server URL
+and optional defaults. You can either rely on the `MCP_SERVER_URL` and
+`MCP_API_KEY` environment variables or pass explicit values:
+
+```python
+from app.agents.manager import ProviderManager
+from app.agents.providers.mcp import MCPChatProvider
+from app.dependencies import set_provider_manager
+
+manager = ProviderManager()
+
+# Reads MCP_SERVER_URL / MCP_API_KEY automatically when base_url/api_key
+# are omitted. Override them here if you prefer explicit configuration.
+manager.register(
+    "support-mcp",
+    MCPChatProvider(
+        base_url="https://mcp.example.com",  # e.g. http://localhost:9001
+        default_tool="chat",                 # Optional: tool invoked for chat
+    ),
+)
+
+manager.set_default("support-mcp")
+set_provider_manager(manager)
+```
+
+To inject a custom system prompt at the beginning of every conversation, set
+the `INITIAL_SYSTEM_PROMPT` environment variable (or provide it via the YAML
+configuration file). The message is stored in session memory immediately after a
+session is created so that the provider receives it with the very first user
+message.
+
+If you need to call a specific MCP tool per request, supply a `tool_name`
+option when posting a message:
+
+```json
+{
+  "content": "برای من خلاصه بنویس",
+  "provider": "support-mcp",
+  "options": { "tool_name": "summarise" }
+}
+```
+
 ### 3. Run the API server
 ```bash
 uvicorn app.main:app --reload
@@ -86,6 +128,7 @@ settings.
 | `OPENROUTER_KEY` | API key for the OpenRouter connector. | `None` |
 | `MCP_SERVER_URL` | Base URL for the MCP server. | `None` |
 | `MCP_API_KEY` | Optional MCP API key. | `None` |
+| `INITIAL_SYSTEM_PROMPT` | System prompt stored when new sessions are created. | `None` |
 | `REDIS_URL` | Enables Redis-backed memory and rate limiting when provided. | `None` |
 | `RATE_RPS` | Average number of requests per second allowed per identity. | `1.0` |
 | `RATE_BURST` | Maximum burst size before throttling applies. | `5` |

@@ -154,6 +154,7 @@ def _provider_to_payload(message: ProviderChatMessage) -> MessagePayload:
 async def create_session(
     request: SessionCreateRequest,
     store: InMemorySessionStore = Depends(get_session_store),
+    memory: ChatMemory = Depends(get_chat_memory),
 ) -> SessionResponse:
     """Create a new chat session with optional provider preferences."""
 
@@ -182,6 +183,22 @@ async def create_session(
         memory_limit=request.memory_limit,
         metadata=request.metadata,
     )
+
+    initial_prompt = settings.initial_system_prompt
+    if initial_prompt:
+        system_message = MemoryChatMessage(role="system", content=initial_prompt)
+        try:
+            await memory.append(
+                session.id,
+                system_message,
+                limit_override=session.memory_limit,
+            )
+        except InvalidMemoryLimitError as exc:
+            raise APIError(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                code="invalid_memory_limit",
+                message=str(exc),
+            ) from exc
 
     logger.info(
         "session_created",
