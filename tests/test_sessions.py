@@ -116,3 +116,53 @@ def test_session_lifecycle_endpoints_manage_store_and_memory() -> None:
             set_metrics_collector(original_metrics)
 
     asyncio.run(_run())
+
+
+def test_missing_message_content_returns_readable_validation_error() -> None:
+    async def _run() -> None:
+        original_store = get_session_store()
+        original_memory = get_chat_memory()
+        original_limiter = get_rate_limiter()
+        original_bypass = get_rate_limit_bypass_store()
+        original_metrics = get_metrics_collector()
+
+        store = InMemorySessionStore()
+        memory = InMemoryChatMemory(default_limit=5)
+        limiter = InMemoryRateLimiter(rate=1000, capacity=1000)
+        bypass = RateLimitBypassStore()
+        metrics = MetricsCollector()
+
+        set_session_store(store)
+        set_chat_memory(memory)
+        set_rate_limiter(limiter)
+        set_rate_limit_bypass_store(bypass)
+        set_metrics_collector(metrics)
+
+        app = create_app()
+
+        try:
+            async with AsyncClient(app=app, base_url="http://testserver") as client:
+                session_response = await client.post("/sessions", json={})
+                session_response.raise_for_status()
+                session_id = session_response.json()["id"]
+
+                response = await client.post(
+                    f"/sessions/{session_id}/messages",
+                    json={"role": "user"},
+                )
+
+                assert response.status_code == 422
+                payload = response.json()
+                assert payload["error"]["code"] == "validation_error"
+                assert (
+                    payload["error"]["message"]
+                    == "Request validation failed: content: field required"
+                )
+        finally:
+            set_session_store(original_store)
+            set_chat_memory(original_memory)
+            set_rate_limiter(original_limiter)
+            set_rate_limit_bypass_store(original_bypass)
+            set_metrics_collector(original_metrics)
+
+    asyncio.run(_run())

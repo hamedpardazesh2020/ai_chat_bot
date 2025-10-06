@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, Mapping, MutableMapping, Optional
+from typing import Any, Dict, Mapping, MutableMapping, Optional, Sequence
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -95,17 +95,50 @@ async def _http_exception_handler(
     return JSONResponse(status_code=exc.status_code, content=payload)
 
 
+def _summarise_validation_errors(errors: Sequence[Mapping[str, Any]]) -> str:
+    """Create a concise human readable summary from validation errors."""
+
+    if not errors:
+        return "Request validation failed."
+
+    formatted: list[str] = []
+    for error in errors:
+        location = error.get("loc", [])
+        if isinstance(location, (list, tuple)):
+            parts = [
+                str(part)
+                for part in location
+                if not (isinstance(part, str) and part == "body")
+            ]
+        elif location:
+            parts = [str(location)]
+        else:
+            parts = []
+
+        field_path = ".".join(parts)
+        message = str(error.get("msg", "Invalid value"))
+
+        if field_path:
+            formatted.append(f"{field_path}: {message}")
+        else:
+            formatted.append(message)
+
+    summary = "; ".join(formatted)
+    return f"Request validation failed: {summary}" if summary else "Request validation failed."
+
+
 async def _validation_exception_handler(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
+    validation_errors = exc.errors()
     details = {
-        "errors": exc.errors(),
+        "errors": validation_errors,
         "body": exc.body,
     }
     error = APIError(
         status_code=422,
         code="validation_error",
-        message="Request validation failed.",
+        message=_summarise_validation_errors(validation_errors),
         details=details,
     )
     logger.warning(
