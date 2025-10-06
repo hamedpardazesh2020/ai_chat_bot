@@ -9,6 +9,32 @@ from typing import Any, Dict
 from .config import Settings
 
 
+_STANDARD_LOG_RECORD_ATTRS = {
+    "args",
+    "name",
+    "msg",
+    "message",
+    "levelname",
+    "levelno",
+    "pathname",
+    "filename",
+    "module",
+    "exc_info",
+    "exc_text",
+    "stack_info",
+    "lineno",
+    "funcName",
+    "created",
+    "msecs",
+    "relativeCreated",
+    "thread",
+    "threadName",
+    "processName",
+    "process",
+    "asctime",
+}
+
+
 class JsonLogFormatter(logging.Formatter):
     """A simple JSON formatter for structured logging output."""
 
@@ -26,28 +52,7 @@ class JsonLogFormatter(logging.Formatter):
         extra = {
             key: value
             for key, value in record.__dict__.items()
-            if key not in logging.LogRecord.__slots__ and key not in {
-                "args",
-                "name",
-                "msg",
-                "levelname",
-                "levelno",
-                "pathname",
-                "filename",
-                "module",
-                "exc_info",
-                "exc_text",
-                "stack_info",
-                "lineno",
-                "funcName",
-                "created",
-                "msecs",
-                "relativeCreated",
-                "thread",
-                "threadName",
-                "processName",
-                "process",
-            }
+            if key not in _STANDARD_LOG_RECORD_ATTRS
         }
         if extra:
             payload.update(_serialise_extra(extra))

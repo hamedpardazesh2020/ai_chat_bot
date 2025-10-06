@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FastAPI Chat Client</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" />
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f172a;
+      --bg-card: rgba(15, 23, 42, 0.7);
+      --bg-input: rgba(255, 255, 255, 0.1);
+      --fg: #e2e8f0;
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.2);
+      font-family: 'Vazir', 'Vazirmatn', sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%);
+      font-family: 'Vazir', 'Vazirmatn', sans-serif;
+      color: var(--fg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      box-sizing: border-box;
+    }
+
+    .app {
+      width: min(960px, 100%);
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 18px;
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(18px);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      overflow: hidden;
+    }
+
+    header {
+      padding: 1.5rem;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    header h1 {
+      margin: 0 0 0.25rem;
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    header p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: rgba(226, 232, 240, 0.75);
+    }
+
+    header label {
+      display: block;
+      margin-top: 0.75rem;
+      font-size: 0.9rem;
+    }
+
+    header input, header select {
+      width: 100%;
+      margin-top: 0.35rem;
+      padding: 0.65rem 0.75rem;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      background: rgba(15, 23, 42, 0.55);
+      color: inherit;
+      font: inherit;
+    }
+
+    header button {
+      margin-top: 0.9rem;
+      padding: 0.65rem 1rem;
+      border-radius: 12px;
+      border: none;
+      background: var(--accent);
+      color: #0f172a;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.2s ease;
+    }
+
+    header button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 30px rgba(56, 189, 248, 0.35);
+    }
+
+    main {
+      padding: 1.25rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      background: rgba(15, 23, 42, 0.35);
+    }
+
+    .message {
+      display: grid;
+      gap: 0.4rem;
+      padding: 0.9rem 1rem;
+      border-radius: 16px;
+      background: rgba(148, 163, 184, 0.12);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      position: relative;
+    }
+
+    .message.user {
+      margin-left: auto;
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.2);
+    }
+
+    .message .meta {
+      font-size: 0.8rem;
+      color: rgba(226, 232, 240, 0.65);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .message .body {
+      font-size: 0.95rem;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    footer {
+      padding: 1.25rem;
+      border-top: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.6);
+    }
+
+    form {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-end;
+    }
+
+    textarea {
+      flex: 1;
+      min-height: 68px;
+      max-height: 200px;
+      resize: vertical;
+      padding: 0.75rem;
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      background: rgba(15, 23, 42, 0.55);
+      color: inherit;
+      font: inherit;
+      line-height: 1.6;
+    }
+
+    footer button {
+      padding: 0.8rem 1.6rem;
+      border-radius: 16px;
+      border: none;
+      background: var(--accent);
+      color: #0f172a;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: transform 0.15s ease, box-shadow 0.2s ease;
+    }
+
+    footer button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(56, 189, 248, 0.3);
+    }
+
+    .status {
+      font-size: 0.85rem;
+      color: rgba(226, 232, 240, 0.75);
+      margin-top: 0.75rem;
+    }
+
+    .status strong {
+      color: var(--accent);
+    }
+
+    .pill {
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .divider {
+      margin: 1.5rem 0;
+      border: none;
+      border-top: 1px dashed rgba(148, 163, 184, 0.25);
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>کلاینت چت FastAPI</h1>
+      <p>برای شروع آدرس سرویس را وارد کن تا سشن جدید ساخته شود.</p>
+      <label>
+        آدرس سرور (مثلاً <code>http://localhost:8000</code>)
+        <input id="baseUrl" type="url" placeholder="http://localhost:8000" />
+      </label>
+      <label>
+        نام پرووایدر (اختیاری)
+        <input id="provider" type="text" placeholder="مثلاً openai" />
+      </label>
+      <label>
+        پرووایدر پشتیبان (اختیاری)
+        <input id="fallback" type="text" placeholder="مثلاً openrouter" />
+      </label>
+      <button id="createSession">ساخت سشن جدید</button>
+      <p class="status" id="sessionStatus">سشنی ساخته نشده است.</p>
+      <button id="deleteSession" class="hidden" style="background: rgba(248, 113, 113, 0.9); color: #0f172a;">حذف سشن</button>
+    </header>
+    <main id="messages"></main>
+    <footer>
+      <form id="chatForm">
+        <textarea id="messageInput" placeholder="پیامت را اینجا بنویس..." disabled></textarea>
+        <button type="submit" id="sendBtn" disabled>ارسال</button>
+      </form>
+      <p class="status" id="requestStatus"></p>
+    </footer>
+  </div>
+
+  <template id="messageTemplate">
+    <div class="message">
+      <div class="meta">
+        <span class="role"></span>
+        <span class="pill provider"></span>
+        <span class="timestamp"></span>
+      </div>
+      <div class="body"></div>
+    </div>
+  </template>
+
+  <script>
+    const baseUrlInput = document.getElementById('baseUrl');
+    const providerInput = document.getElementById('provider');
+    const fallbackInput = document.getElementById('fallback');
+    const createSessionBtn = document.getElementById('createSession');
+    const deleteSessionBtn = document.getElementById('deleteSession');
+    const sessionStatus = document.getElementById('sessionStatus');
+    const requestStatus = document.getElementById('requestStatus');
+    const messagesEl = document.getElementById('messages');
+    const chatForm = document.getElementById('chatForm');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const messageTemplate = document.getElementById('messageTemplate');
+
+    let sessionId = null;
+
+    const formatDateTime = (date = new Date()) => {
+      return new Intl.DateTimeFormat('fa-IR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      }).format(date);
+    };
+
+    function appendMessage({ role, content, provider, timestamp = new Date() }) {
+      const node = messageTemplate.content.firstElementChild.cloneNode(true);
+      node.classList.toggle('user', role === 'user');
+      node.querySelector('.role').textContent = role === 'assistant' ? 'دستیار' : 'کاربر';
+      node.querySelector('.timestamp').textContent = formatDateTime(timestamp);
+      node.querySelector('.body').textContent = content;
+      const providerEl = node.querySelector('.provider');
+      if (provider) {
+        providerEl.textContent = provider;
+      } else {
+        providerEl.classList.add('hidden');
+      }
+      messagesEl.appendChild(node);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function setLoading(loading, message = '') {
+      if (loading) {
+        requestStatus.innerHTML = `در حال ارسال... <strong>${message}</strong>`;
+        sendBtn.disabled = true;
+      } else {
+        requestStatus.textContent = message;
+        sendBtn.disabled = !sessionId;
+      }
+    }
+
+    async function createSession() {
+      const baseUrl = baseUrlInput.value.trim();
+      if (!baseUrl) {
+        alert('آدرس سرور را وارد کن.');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const response = await fetch(new URL('/sessions', baseUrl), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: providerInput.value.trim() || undefined,
+            fallback_provider: fallbackInput.value.trim() || undefined
+          })
+        });
+
+        if (!response.ok) {
+          throw await response.json();
+        }
+
+        const data = await response.json();
+        sessionId = data.id;
+        sessionStatus.innerHTML = `سشن فعال: <strong>${sessionId}</strong>`;
+        deleteSessionBtn.classList.remove('hidden');
+        messageInput.disabled = false;
+        sendBtn.disabled = false;
+        messagesEl.innerHTML = '';
+        appendMessage({
+          role: 'assistant',
+          content: 'سشن با موفقیت ساخته شد! حالا پیام خود را ارسال کن.',
+          provider: providerInput.value.trim() || null
+        });
+        requestStatus.textContent = '';
+      } catch (error) {
+        console.error(error);
+        requestStatus.textContent = 'ساخت سشن با خطا مواجه شد.';
+        sessionStatus.textContent = 'سشنی ساخته نشده است.';
+        sessionId = null;
+        deleteSessionBtn.classList.add('hidden');
+        messageInput.disabled = true;
+        sendBtn.disabled = true;
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function deleteSession() {
+      if (!sessionId) return;
+      const baseUrl = baseUrlInput.value.trim();
+      try {
+        await fetch(new URL(`/sessions/${sessionId}`, baseUrl), {
+          method: 'DELETE'
+        });
+      } catch (error) {
+        console.warn('حذف سشن با خطا مواجه شد', error);
+      }
+      sessionId = null;
+      sessionStatus.textContent = 'سشنی ساخته نشده است.';
+      messageInput.disabled = true;
+      sendBtn.disabled = true;
+      deleteSessionBtn.classList.add('hidden');
+      appendMessage({
+        role: 'assistant',
+        content: 'سشن بسته شد.',
+        provider: null
+      });
+    }
+
+    async function sendMessage(message) {
+      if (!sessionId) {
+        alert('ابتدا سشن بساز.');
+        return;
+      }
+      const baseUrl = baseUrlInput.value.trim();
+
+      appendMessage({ role: 'user', content: message, provider: 'you', timestamp: new Date() });
+      setLoading(true, 'در انتظار پاسخ سرور');
+
+      try {
+        const response = await fetch(new URL(`/sessions/${sessionId}/messages`, baseUrl), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message,
+            provider: providerInput.value.trim() || undefined,
+            fallback_provider: fallbackInput.value.trim() || undefined
+          })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          const message = data?.error || 'پاسخ نامعتبر';
+          throw new Error(message);
+        }
+
+        appendMessage({
+          role: 'assistant',
+          content: data.response?.content ?? '[پاسخی دریافت نشد]',
+          provider: data.response?.provider || data.provider || providerInput.value.trim(),
+          timestamp: new Date()
+        });
+        setLoading(false, 'پاسخ دریافت شد.');
+      } catch (error) {
+        console.error(error);
+        setLoading(false, 'خطا در ارسال پیام.');
+        appendMessage({
+          role: 'assistant',
+          content: error.message || 'خطای ناشناخته',
+          provider: 'خطا'
+        });
+      }
+    }
+
+    createSessionBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      createSession();
+    });
+
+    deleteSessionBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      deleteSession();
+    });
+
+    chatForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const value = messageInput.value.trim();
+      if (!value) return;
+      messageInput.value = '';
+      sendMessage(value);
+    });
+
+    messageInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        chatForm.dispatchEvent(new Event('submit'));
+      }
+    });
+  </script>
+</body>
+</html>
