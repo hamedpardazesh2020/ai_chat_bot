@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>پنل مدیریت Rate Limit</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        --surface: rgba(255, 255, 255, 0.12);
+        --surface-light: rgba(255, 255, 255, 0.75);
+        --primary: #ffb400;
+        --accent: #42c3ff;
+        --text: #f5f7fb;
+        font-size: 16px;
+        font-family: "IRANSans", "Vazirmatn", "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2.5rem 1.5rem;
+        color: var(--text);
+      }
+
+      .panel {
+        width: min(960px, 100%);
+        background: rgba(17, 25, 40, 0.75);
+        border-radius: 28px;
+        backdrop-filter: blur(22px);
+        padding: 2.5rem 3rem;
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+      }
+
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 2.2rem;
+        letter-spacing: -0.5px;
+      }
+
+      p.description {
+        margin: 0 0 2rem;
+        color: rgba(245, 247, 251, 0.8);
+        line-height: 1.8;
+      }
+
+      .grid {
+        display: grid;
+        gap: 1.75rem;
+      }
+
+      .card {
+        background: var(--surface);
+        border-radius: 20px;
+        padding: 1.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+      }
+
+      .card h2 {
+        margin-top: 0;
+        font-size: 1.4rem;
+        color: var(--primary);
+      }
+
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      input {
+        width: 100%;
+        padding: 0.85rem 1rem;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(14, 21, 37, 0.65);
+        color: var(--text);
+        font-size: 1rem;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(66, 195, 255, 0.35);
+      }
+
+      button {
+        padding: 0.85rem 1.8rem;
+        border-radius: 14px;
+        border: none;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        background: linear-gradient(135deg, var(--primary), #ff6f61);
+        color: #121826;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 24px rgba(255, 111, 97, 0.35);
+      }
+
+      button.secondary {
+        background: rgba(255, 255, 255, 0.12);
+        color: var(--text);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      button.secondary:hover {
+        background: rgba(255, 255, 255, 0.18);
+        box-shadow: none;
+      }
+
+      .inline-form {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: flex-end;
+      }
+
+      .inline-form > div {
+        flex: 1 1 220px;
+      }
+
+      .status {
+        margin-top: 1rem;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: var(--text);
+      }
+
+      .status.error {
+        color: #ff8a8a;
+      }
+
+      ul#bypass-list {
+        list-style: none;
+        margin: 1.25rem 0 0;
+        padding: 0;
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      ul#bypass-list li {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 0.9rem 1.1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 1.05rem;
+      }
+
+      ul#bypass-list li button {
+        padding: 0.5rem 1.1rem;
+        font-size: 0.9rem;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.15);
+        color: var(--text);
+      }
+
+      footer {
+        margin-top: 2rem;
+        text-align: center;
+        color: rgba(255, 255, 255, 0.45);
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="panel">
+      <h1>پنل مدیریت ریت لیمیت</h1>
+      <p class="description">
+        با استفاده از این رابط می‌توانید آی‌پی‌های دارای دسترسی ویژه را مدیریت کنید.
+        ابتدا آدرس سرویس و توکن ادمین را وارد کرده و سپس درخواست‌ها را ارسال نمایید.
+      </p>
+
+      <section class="grid">
+        <div class="card">
+          <h2>پیکربندی اتصال</h2>
+          <div class="grid">
+            <div>
+              <label for="baseUrl">آدرس سرویس (Base URL)</label>
+              <input id="baseUrl" type="url" value="http://localhost:8000" />
+            </div>
+            <div>
+              <label for="token">توکن ادمین (X-Admin-Token)</label>
+              <input id="token" type="password" placeholder="توکن را وارد کنید" />
+            </div>
+          </div>
+          <p class="status" id="connectionStatus"></p>
+        </div>
+
+        <div class="card">
+          <h2>دریافت فهرست آی‌پی‌ها</h2>
+          <button id="fetchBtn">دریافت لیست</button>
+          <p class="status" id="fetchStatus"></p>
+          <ul id="bypass-list"></ul>
+        </div>
+
+        <div class="card">
+          <h2>افزودن آی‌پی جدید</h2>
+          <form id="addForm" class="inline-form">
+            <div>
+              <label for="ipInput">آی‌پی</label>
+              <input id="ipInput" type="text" placeholder="مثال: 203.0.113.24" required />
+            </div>
+            <button type="submit">افزودن</button>
+          </form>
+          <p class="status" id="addStatus"></p>
+        </div>
+      </section>
+
+      <footer>
+        توسعه یافته برای کار با سرویس FastAPI شما – همه درخواست‌ها با هدر ادمین ارسال
+        می‌شوند.
+      </footer>
+    </main>
+
+    <script>
+      const baseUrlInput = document.getElementById("baseUrl");
+      const tokenInput = document.getElementById("token");
+      const connectionStatus = document.getElementById("connectionStatus");
+      const fetchBtn = document.getElementById("fetchBtn");
+      const fetchStatus = document.getElementById("fetchStatus");
+      const bypassList = document.getElementById("bypass-list");
+      const addForm = document.getElementById("addForm");
+      const addStatus = document.getElementById("addStatus");
+
+      function buildHeaders() {
+        const token = tokenInput.value.trim();
+        return token
+          ? {
+              "Content-Type": "application/json",
+              "X-Admin-Token": token,
+            }
+          : { "Content-Type": "application/json" };
+      }
+
+      function clearStatus() {
+        [fetchStatus, addStatus, connectionStatus].forEach((el) => {
+          el.textContent = "";
+          el.classList.remove("error");
+        });
+      }
+
+      function showError(element, message) {
+        element.textContent = message;
+        element.classList.add("error");
+      }
+
+      async function request(path, options = {}) {
+        const baseUrl = baseUrlInput.value.trim().replace(/\/$/, "");
+        if (!baseUrl) {
+          throw new Error("لطفاً ابتدا آدرس سرویس را وارد کنید.");
+        }
+        clearStatus();
+
+        const response = await fetch(`${baseUrl}${path}`, {
+          ...options,
+          headers: { ...buildHeaders(), ...(options.headers || {}) },
+        });
+
+        if (!response.ok) {
+          let detail = `${response.status} ${response.statusText}`;
+          try {
+            const data = await response.json();
+            if (data?.message) {
+              detail = data.message;
+            }
+          } catch (_) {
+            /* response is not JSON */
+          }
+          throw new Error(detail);
+        }
+
+        if (response.status === 204) {
+          return null;
+        }
+
+        const text = await response.text();
+        return text ? JSON.parse(text) : null;
+      }
+
+      async function refreshList() {
+        fetchStatus.textContent = "در حال دریافت...";
+        fetchStatus.classList.remove("error");
+        try {
+          const data = await request("/admin/bypass");
+          bypassList.innerHTML = "";
+          if (data.length === 0) {
+            const empty = document.createElement("li");
+            empty.textContent = "آی‌پی ثبت نشده است.";
+            empty.style.justifyContent = "center";
+            empty.style.opacity = "0.7";
+            bypassList.appendChild(empty);
+          } else {
+            data.forEach((ip) => {
+              const li = document.createElement("li");
+              li.innerHTML = `<span>${ip}</span>`;
+              const btn = document.createElement("button");
+              btn.textContent = "حذف";
+              btn.addEventListener("click", () => removeIp(ip));
+              li.appendChild(btn);
+              bypassList.appendChild(li);
+            });
+          }
+          fetchStatus.textContent = "لیست با موفقیت دریافت شد.";
+        } catch (error) {
+          showError(fetchStatus, error.message);
+        }
+      }
+
+      async function removeIp(ip) {
+        addStatus.textContent = "";
+        fetchStatus.textContent = `در حال حذف ${ip}...`;
+        fetchStatus.classList.remove("error");
+        try {
+          await request(`/admin/bypass/${encodeURIComponent(ip)}`, {
+            method: "DELETE",
+          });
+          fetchStatus.textContent = "آی‌پی با موفقیت حذف شد.";
+          await refreshList();
+        } catch (error) {
+          showError(fetchStatus, error.message);
+        }
+      }
+
+      addForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        addStatus.textContent = "در حال ارسال...";
+        addStatus.classList.remove("error");
+
+        const ipValue = document.getElementById("ipInput").value.trim();
+        if (!ipValue) {
+          showError(addStatus, "لطفاً آی‌پی را وارد کنید.");
+          return;
+        }
+
+        try {
+          await request("/admin/bypass", {
+            method: "POST",
+            body: JSON.stringify({ ip: ipValue }),
+          });
+          addStatus.textContent = "آی‌پی با موفقیت افزوده شد.";
+          document.getElementById("ipInput").value = "";
+          await refreshList();
+        } catch (error) {
+          showError(addStatus, error.message);
+        }
+      });
+
+      fetchBtn.addEventListener("click", refreshList);
+
+      [baseUrlInput, tokenInput].forEach((input) => {
+        input.addEventListener("input", () => {
+          connectionStatus.textContent = "تنظیمات ذخیره شد.";
+        });
+      });
+    </script>
+  </body>
+</html>
