@@ -121,6 +121,11 @@ settings.
 }
 ```
 
+> **Note:** The request body must include the `content` field shown above. Older
+> snippets or third-party examples that send a `message` property will be
+> rejected by FastAPI's validation layer with a `content: field required`
+> error. Update any clients to provide `content` to avoid HTTP 422 responses.
+
 ```json
 {
   "session_id": "<uuid>",
@@ -174,6 +179,11 @@ python examples/basic_session.py
 The script reads the `CHAT_API_URL`, `CHAT_PROVIDER`, and `CHAT_USER_MESSAGE`
 environment variables so you can target remote deployments or experiment with
 different providers and prompts.
+
+For a visual look at the service health, open `examples/metrics.html` in a
+browser while the API is running locally. The page uses the Vazir font, polls
+`GET /metrics` on a configurable interval (۲۰ ثانیه به طور پیش‌فرض), and plots
+live charts for total requests, responses, and errors.
 
 ## Development notes
 - The default memory backend is in-process. Setting `REDIS_URL` enables the

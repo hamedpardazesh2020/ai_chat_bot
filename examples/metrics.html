@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>نمودار زنده متریک‌ها</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/vazir-font@30.1.0/dist/font-face.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: "Vazir", "Vazirmatn", "IRANSans", "Segoe UI", sans-serif;
+        font-size: 16px;
+        --bg: #0f172a;
+        --card: rgba(15, 23, 42, 0.8);
+        --accent: #38bdf8;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2.5rem 1.5rem;
+        color: var(--text);
+      }
+
+      .container {
+        width: min(1080px, 100%);
+        background: var(--card);
+        border-radius: 28px;
+        box-shadow: 0 35px 70px rgba(8, 11, 24, 0.45);
+        padding: 2.5rem 3rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(18px);
+      }
+
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: 2.2rem;
+        letter-spacing: -0.6px;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      label {
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      select {
+        padding: 0.65rem 1.2rem;
+        border-radius: 16px;
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        background: rgba(15, 23, 42, 0.6);
+        color: var(--text);
+        font-size: 1rem;
+        cursor: pointer;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      select:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1.25rem;
+        margin-bottom: 2rem;
+      }
+
+      .stat-card {
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 20px;
+        padding: 1.5rem;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+      }
+
+      .stat-card h2 {
+        margin: 0 0 0.6rem;
+        font-size: 1.05rem;
+        color: var(--muted);
+      }
+
+      .stat-card p {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+      }
+
+      .chart-wrapper {
+        position: relative;
+        width: 100%;
+        height: 420px;
+      }
+
+      footer {
+        margin-top: 2rem;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 1rem;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .error {
+        color: #f87171;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div>
+          <h1>نمای زنده متریک‌های سرویس</h1>
+          <p>داده‌های به‌دست‌آمده از <code>GET /metrics</code></p>
+        </div>
+        <div class="controls">
+          <label for="interval">بازهٔ به‌روزرسانی</label>
+          <select id="interval">
+            <option value="5000">۵ ثانیه</option>
+            <option value="10000">۱۰ ثانیه</option>
+            <option value="20000" selected>۲۰ ثانیه</option>
+            <option value="30000">۳۰ ثانیه</option>
+            <option value="60000">۶۰ ثانیه</option>
+          </select>
+        </div>
+      </header>
+
+      <section class="stats" aria-live="polite">
+        <div class="stat-card">
+          <h2>تعداد کل درخواست‌ها</h2>
+          <p id="requestsTotal">۰</p>
+        </div>
+        <div class="stat-card">
+          <h2>تعداد کل پاسخ‌ها</h2>
+          <p id="responsesTotal">۰</p>
+        </div>
+        <div class="stat-card">
+          <h2>تعداد خطاها</h2>
+          <p id="errorsTotal">۰</p>
+        </div>
+        <div class="stat-card">
+          <h2>میانگین تأخیر (میلی‌ثانیه)</h2>
+          <p id="latencyAvg">۰</p>
+        </div>
+      </section>
+
+      <div class="chart-wrapper">
+        <canvas id="metricsChart" aria-label="نمودار روند درخواست‌ها" role="img"></canvas>
+      </div>
+
+      <footer>
+        <div>آخرین به‌روزرسانی: <span id="lastUpdated">—</span></div>
+        <div id="status"></div>
+      </footer>
+    </div>
+
+    <script>
+      const chartElement = document.getElementById("metricsChart");
+      const statusEl = document.getElementById("status");
+      const lastUpdatedEl = document.getElementById("lastUpdated");
+      const intervalSelect = document.getElementById("interval");
+
+      const requestsTotalEl = document.getElementById("requestsTotal");
+      const responsesTotalEl = document.getElementById("responsesTotal");
+      const errorsTotalEl = document.getElementById("errorsTotal");
+      const latencyAvgEl = document.getElementById("latencyAvg");
+
+      const dataConfig = {
+        labels: [],
+        datasets: [
+          {
+            label: "درخواست‌ها",
+            data: [],
+            borderColor: "#38bdf8",
+            backgroundColor: "rgba(56, 189, 248, 0.15)",
+            tension: 0.35,
+            fill: true,
+          },
+          {
+            label: "پاسخ‌ها",
+            data: [],
+            borderColor: "#34d399",
+            backgroundColor: "rgba(52, 211, 153, 0.15)",
+            tension: 0.35,
+            fill: true,
+          },
+          {
+            label: "خطاها",
+            data: [],
+            borderColor: "#f87171",
+            backgroundColor: "rgba(248, 113, 113, 0.15)",
+            tension: 0.35,
+            fill: true,
+          },
+        ],
+      };
+
+      const chart = new Chart(chartElement, {
+        type: "line",
+        data: dataConfig,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: "index",
+            intersect: false,
+          },
+          plugins: {
+            legend: {
+              labels: {
+                font: {
+                  family: "Vazir",
+                },
+              },
+            },
+            tooltip: {
+              callbacks: {
+                label: (context) => {
+                  const label = context.dataset.label || "";
+                  const value = context.parsed.y ?? 0;
+                  return `${label}: ${value.toLocaleString("fa-IR")}`;
+                },
+              },
+              bodyFont: {
+                family: "Vazir",
+              },
+              titleFont: {
+                family: "Vazir",
+              },
+            },
+          },
+          scales: {
+            x: {
+              ticks: {
+                font: {
+                  family: "Vazir",
+                },
+              },
+            },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                precision: 0,
+                font: {
+                  family: "Vazir",
+                },
+              },
+            },
+          },
+        },
+      });
+
+      let timerId;
+
+      async function fetchMetrics() {
+        try {
+          statusEl.textContent = "";
+          const response = await fetch("http://localhost:8000/metrics", {
+            headers: { Accept: "application/json" },
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const payload = await response.json();
+          updateStats(payload);
+          appendChartPoint(payload);
+          lastUpdatedEl.textContent = new Date().toLocaleTimeString("fa-IR");
+        } catch (error) {
+          console.error(error);
+          statusEl.innerHTML = `<span class="error">خطا در دریافت متریک‌ها: ${error.message}</span>`;
+        }
+      }
+
+      function updateStats(metrics) {
+        const {
+          requests_total = 0,
+          responses_total = 0,
+          errors_total = 0,
+          request_latency_avg_ms = 0,
+        } = metrics;
+
+        requestsTotalEl.textContent = requests_total.toLocaleString("fa-IR");
+        responsesTotalEl.textContent = responses_total.toLocaleString("fa-IR");
+        errorsTotalEl.textContent = errors_total.toLocaleString("fa-IR");
+        latencyAvgEl.textContent = request_latency_avg_ms.toLocaleString("fa-IR", {
+          maximumFractionDigits: 2,
+        });
+      }
+
+      function appendChartPoint(metrics) {
+        const timestamp = new Date().toLocaleTimeString("fa-IR");
+        dataConfig.labels.push(timestamp);
+        dataConfig.datasets[0].data.push(metrics.requests_total ?? 0);
+        dataConfig.datasets[1].data.push(metrics.responses_total ?? 0);
+        dataConfig.datasets[2].data.push(metrics.errors_total ?? 0);
+
+        const maxPoints = 30;
+        if (dataConfig.labels.length > maxPoints) {
+          dataConfig.labels.shift();
+          dataConfig.datasets.forEach((dataset) => dataset.data.shift());
+        }
+
+        chart.update();
+      }
+
+      function scheduleNextFetch() {
+        clearTimeout(timerId);
+        timerId = setTimeout(async () => {
+          await fetchMetrics();
+          scheduleNextFetch();
+        }, Number(intervalSelect.value));
+      }
+
+      intervalSelect.addEventListener("change", () => {
+        scheduleNextFetch();
+      });
+
+      fetchMetrics().then(scheduleNextFetch);
+    </script>
+  </body>
+</html>

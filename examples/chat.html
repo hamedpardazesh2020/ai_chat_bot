@@ -377,14 +377,14 @@
       });
     }
 
-    async function sendMessage(message) {
+    async function sendMessage(content) {
       if (!sessionId) {
         alert('ابتدا سشن بساز.');
         return;
       }
       const baseUrl = baseUrlInput.value.trim();
 
-      appendMessage({ role: 'user', content: message, provider: 'you', timestamp: new Date() });
+      appendMessage({ role: 'user', content, provider: 'you', timestamp: new Date() });
       setLoading(true, 'در انتظار پاسخ سرور');
 
       try {
@@ -392,7 +392,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            message,
+            content,
             provider: providerInput.value.trim() || undefined,
             fallback_provider: fallbackInput.value.trim() || undefined
           })
@@ -400,8 +400,11 @@
 
         const data = await response.json();
         if (!response.ok) {
-          const message = data?.error || 'پاسخ نامعتبر';
-          throw new Error(message);
+          const errorMessage =
+            typeof data?.error === 'string'
+              ? data.error
+              : data?.error?.message || 'پاسخ نامعتبر';
+          throw new Error(errorMessage);
         }
 
         appendMessage({
