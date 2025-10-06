@@ -7,6 +7,7 @@ from typing import Any, Awaitable, Callable, Final
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 from .admin import router as admin_router
 from .api import sessions_router
@@ -83,6 +84,13 @@ def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings)
     application = FastAPI(title="Chat Agent API")
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     register_exception_handlers(application)
     metrics = get_metrics_collector()
     request_logger = logging.getLogger("app.requests")
