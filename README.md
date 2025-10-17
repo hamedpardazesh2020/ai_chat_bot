@@ -134,7 +134,7 @@ settings.
 | `RATE_BURST` | Maximum burst size before throttling applies. | `5` |
 | `MEMORY_DEFAULT` | Default number of messages stored per session. | `10` |
 | `MEMORY_MAX` | Maximum allowed messages stored per session. | `50` |
-| `METRICS_ENABLED` | Toggles metrics middleware. | `true` |
+| `METRICS_ENABLED` | Toggles metrics middleware and the `/metrics` endpoint. | `true` |
 | `LOG_LEVEL` | Minimum logging level for structured logs. | `INFO` |
 | `PROVIDER_TIMEOUT_SECONDS` | Timeout applied to outbound provider requests. | `30` |
 | `APP_CONFIG_FILE` | Optional path to a YAML config file that augments env vars. | `None` |
@@ -143,6 +143,7 @@ settings.
 ### Health & metrics
 - `GET /health` – Returns uptime and error counters for readiness checks.
 - `GET /metrics` – Provides request/response counters and latency statistics.
+  This route is only available when `METRICS_ENABLED` is `true`.
 
 ### Session messaging
 - `POST /sessions` – Create a new chat session with optional provider
@@ -208,6 +209,14 @@ body:
 Each request is logged with a unique `X-Request-ID`. Metrics can be harvested by
 polling `/metrics` and include aggregated counters for requests, responses, and
 errors.
+
+#### Disabling metrics collection
+Set the environment variable `METRICS_ENABLED=false` (or the equivalent setting
+in your YAML config) to skip registering the metrics middleware and the
+`/metrics` route altogether. The `/health` endpoint remains available and still
+reports uptime, but request and latency counters stay unchanged because no
+instrumentation runs. This is useful for privacy-sensitive deployments or when
+you want to minimise per-request overhead.
 
 ## Examples
 

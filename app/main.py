@@ -25,6 +25,7 @@ from .rate_limiter import RateLimitMiddleware
 META_TAG: Final[str] = "meta"
 
 meta_router = APIRouter()
+metrics_router = APIRouter()
 
 
 @meta_router.get(
@@ -48,7 +49,7 @@ async def health_check(
     }
 
 
-@meta_router.get(
+@metrics_router.get(
     "/metrics",
     tags=[META_TAG],
     summary="Service metrics snapshot",
@@ -92,7 +93,6 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     register_exception_handlers(application)
-    metrics = get_metrics_collector()
     request_logger = logging.getLogger("app.requests")
     application.add_middleware(
         RateLimitMiddleware,
@@ -138,21 +138,26 @@ def create_app() -> FastAPI:
         )
         return response
 
-    @application.middleware("http")
-    async def _metrics_middleware(
-        request: Request,
-        call_next: Callable[[Request], Awaitable[Response]],
-    ) -> Response:
-        await metrics.record_request(request.method)
-        start_time = perf_counter()
-        try:
-            response = await call_next(request)
-        except Exception:
-            await metrics.record_exception()
-            raise
-        duration = perf_counter() - start_time
-        await metrics.record_response(response.status_code, duration)
-        return response
+    if settings.metrics_enabled:
+        metrics = get_metrics_collector()
+
+        @application.middleware("http")
+        async def _metrics_middleware(
+            request: Request,
+            call_next: Callable[[Request], Awaitable[Response]],
+        ) -> Response:
+            await metrics.record_request(request.method)
+            start_time = perf_counter()
+            try:
+                response = await call_next(request)
+            except Exception:
+                await metrics.record_exception()
+                raise
+            duration = perf_counter() - start_time
+            await metrics.record_response(response.status_code, duration)
+            return response
+
+        application.include_router(metrics_router)
     application.include_router(root_router)
     application.include_router(meta_router)
     application.include_router(admin_router)

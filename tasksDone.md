@@ -111,3 +111,8 @@
   - Summary: Tightened typing hints, added session lifecycle endpoints with memory cleanup, provided a runnable usage example, and refreshed docs.
   - Files: app/admin.py; app/api/sessions.py; README.md; examples/basic_session.py; tests/test_sessions.py; tasks.md; tasksDone.md.
   - Notes: Run `pytest` to execute the updated suite; try `python examples/basic_session.py` against a running API for a quick manual check.
+
+- **T26 — Metrics toggle** (2025-10-06T19:15:00Z)
+  - Summary: Taught the application factory to respect the `METRICS_ENABLED` flag and added tests covering both enabled and disabled flows.
+  - Files: app/main.py; tests/test_metrics_toggle.py; tasks.md; tasksDone.md.
+  - Notes: Set `METRICS_ENABLED=false` to skip metrics middleware and the `/metrics` route while keeping health reporting available.
