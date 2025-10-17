@@ -48,3 +48,5 @@
       Dockerfile and docker-compose (with Redis).
 - [x] **T25 — Polish** (completed: tightened typing, added lifecycle endpoints, and documented examples)
       Final pass on types, comments, and minimal examples.
+- [x] **T26 — Metrics toggle** (completed: respected the `METRICS_ENABLED` flag in app wiring)
+      Skip metrics middleware and the `/metrics` route when metrics are disabled; add regression tests.
