@@ -3,7 +3,7 @@
 import asyncio
 from typing import Sequence
 
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from app.agents.manager import (
     ChatMessage as ProviderChatMessage,
@@ -93,7 +93,8 @@ def test_messages_endpoint_uses_fallback_provider_when_primary_fails() -> None:
             set_metrics_collector(MetricsCollector())
 
             app = create_app()
-            async with AsyncClient(app=app, base_url="http://testserver") as client:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://testserver") as client:
                 response = await client.post(
                     f"/sessions/{session.id}/messages",
                     json={"content": "hello"},
@@ -145,7 +146,8 @@ def test_messages_endpoint_returns_error_when_fallback_unavailable() -> None:
             set_metrics_collector(MetricsCollector())
 
             app = create_app()
-            async with AsyncClient(app=app, base_url="http://testserver") as client:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://testserver") as client:
                 response = await client.post(
                     f"/sessions/{session.id}/messages",
                     json={"content": "hi"},

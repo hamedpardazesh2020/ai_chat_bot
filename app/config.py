@@ -7,7 +7,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from pydantic import BaseSettings, Field, root_validator, validator
+from pydantic import Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 try:  # pragma: no cover - optional dependency
     import yaml
@@ -30,6 +31,16 @@ class Settings(BaseSettings):
     openrouter_key: Optional[str] = Field(default=None, env="OPENROUTER_KEY")
     mcp_server_url: Optional[str] = Field(default=None, env="MCP_SERVER_URL")
     mcp_api_key: Optional[str] = Field(default=None, env="MCP_API_KEY")
+    mcp_agent_config: Optional[str] = Field(default=None, env="MCP_AGENT_CONFIG")
+    mcp_agent_servers: list[str] = Field(default_factory=list, env="MCP_AGENT_SERVERS")
+    mcp_agent_app_name: str = Field(default="chat-backend", env="MCP_AGENT_APP_NAME")
+    mcp_agent_instruction: Optional[str] = Field(
+        default=None, env="MCP_AGENT_INSTRUCTION"
+    )
+    mcp_agent_llm_provider: str = Field(default="openai", env="MCP_AGENT_LLM")
+    mcp_agent_default_model: Optional[str] = Field(
+        default=None, env="MCP_AGENT_MODEL"
+    )
     initial_system_prompt: Optional[str] = Field(
         default=None,
         env="INITIAL_SYSTEM_PROMPT",
@@ -51,82 +62,110 @@ class Settings(BaseSettings):
         default=30.0, env="PROVIDER_TIMEOUT_SECONDS"
     )
 
-    class Config:
-        """Pydantic configuration."""
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls,
+        init_settings,
+        env_settings,
+        dotenv_settings,
+        file_secret_settings,
+    ):
+        """Inject a YAML settings source between init values and environment variables."""
 
-        @classmethod
-        def customise_sources(cls, init_settings, env_settings, file_secret_settings):
-            """Inject a YAML settings source between init values and env values."""
+        return (
+            init_settings,
+            cls.yaml_config_settings_source,
+            env_settings,
+            dotenv_settings,
+            file_secret_settings,
+        )
 
-            return (
-                init_settings,
-                cls.yaml_config_settings_source,
-                env_settings,
-                file_secret_settings,
+    @staticmethod
+    def yaml_config_settings_source() -> Dict[str, Any]:
+        """Load settings from a YAML file when ``APP_CONFIG_FILE`` is set."""
+
+        config_file = os.getenv("APP_CONFIG_FILE")
+        if not config_file:
+            return {}
+
+        path = Path(config_file)
+        if not path.exists():
+            raise FileNotFoundError(f"Config file '{config_file}' was not found.")
+
+        if path.suffix.lower() not in {".yml", ".yaml"}:
+            raise ValueError("Unsupported config format. Expected a .yml or .yaml file.")
+
+        if yaml is None:
+            raise RuntimeError(
+                "PyYAML is required to load YAML configuration files but is not installed."
             )
 
-        @staticmethod
-        def yaml_config_settings_source(settings: BaseSettings) -> Dict[str, Any]:
-            """Load settings from a YAML file when ``APP_CONFIG_FILE`` is set."""
+        data = yaml.safe_load(path.read_text()) or {}
+        if not isinstance(data, dict):
+            raise ValueError("YAML configuration must define a mapping at the root level.")
+        return data
 
-            config_file = os.getenv("APP_CONFIG_FILE")
-            if not config_file:
-                return {}
-
-            path = Path(config_file)
-            if not path.exists():
-                raise FileNotFoundError(f"Config file '{config_file}' was not found.")
-
-            if path.suffix.lower() not in {".yml", ".yaml"}:
-                raise ValueError(
-                    "Unsupported config format. Expected a .yml or .yaml file."
-                )
-
-            if yaml is None:
-                raise RuntimeError(
-                    "PyYAML is required to load YAML configuration files but is not installed."
-                )
-
-            data = yaml.safe_load(path.read_text()) or {}
-            if not isinstance(data, dict):
-                raise ValueError("YAML configuration must define a mapping at the root level.")
-            return data
-
-    @validator("rate_rps")
+    @field_validator("rate_rps")
+    @classmethod
     def _validate_rate_rps(cls, value: float) -> float:
         if value <= 0:
             raise ValueError("RATE_RPS must be greater than 0.")
         return value
 
-    @validator("rate_burst")
+    @field_validator("rate_burst")
+    @classmethod
     def _validate_rate_burst(cls, value: int) -> int:
         if value < 1:
             raise ValueError("RATE_BURST must be at least 1.")
         return value
 
-    @validator("memory_default", "memory_max")
-    def _validate_memory_bounds(cls, value: int, field) -> int:  # type: ignore[override]
+    @field_validator("memory_default", "memory_max")
+    @classmethod
+    def _validate_memory_bounds(cls, value: int) -> int:
         if value < 1:
-            raise ValueError(f"{field.name.upper()} must be at least 1.")
+            raise ValueError("Memory limits must be at least 1.")
         return value
 
-    @root_validator
-    def _validate_memory_relationship(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        default = values.get("memory_default")
-        maximum = values.get("memory_max")
+    @model_validator(mode="after")
+    def _validate_memory_relationship(self) -> "Settings":
+        default = self.memory_default
+        maximum = self.memory_max
         if default is not None and maximum is not None and default > maximum:
             raise ValueError("MEMORY_DEFAULT cannot exceed MEMORY_MAX.")
-        return values
+        return self
 
-    @validator("provider_timeout_seconds")
+    @field_validator("provider_timeout_seconds")
+    @classmethod
     def _validate_timeout(cls, value: float) -> float:
         if value <= 0:
             raise ValueError("PROVIDER_TIMEOUT_SECONDS must be greater than 0.")
         return value
+
+    @field_validator("mcp_agent_servers", mode="before")
+    @classmethod
+    def _parse_mcp_servers(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        if isinstance(value, (list, tuple)):
+            return [str(item).strip() for item in value if str(item).strip()]
+        raise ValueError("MCP_AGENT_SERVERS must be a comma-separated string or list.")
+
+    @field_validator("mcp_agent_llm_provider", mode="before")
+    @classmethod
+    def _normalise_llm(cls, value: Optional[str]) -> str:
+        if not value:
+            return "openai"
+        return str(value).strip().lower()
 
     @property
     def redis_enabled(self) -> bool:

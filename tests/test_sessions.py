@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from app.sessions import (
     InMemorySessionStore,
@@ -85,9 +85,10 @@ def test_session_lifecycle_endpoints_manage_store_and_memory() -> None:
         set_metrics_collector(metrics)
 
         app = create_app()
+        transport = ASGITransport(app=app)
 
         try:
-            async with AsyncClient(app=app, base_url="http://testserver") as client:
+            async with AsyncClient(transport=transport, base_url="http://testserver") as client:
                 response = await client.post(
                     "/sessions",
                     json={"provider": "openai", "metadata": {"topic": "demo"}},
@@ -139,9 +140,10 @@ def test_missing_message_content_returns_readable_validation_error() -> None:
         set_metrics_collector(metrics)
 
         app = create_app()
+        transport = ASGITransport(app=app)
 
         try:
-            async with AsyncClient(app=app, base_url="http://testserver") as client:
+            async with AsyncClient(transport=transport, base_url="http://testserver") as client:
                 session_response = await client.post("/sessions", json={})
                 session_response.raise_for_status()
                 session_id = session_response.json()["id"]
@@ -156,7 +158,7 @@ def test_missing_message_content_returns_readable_validation_error() -> None:
                 assert payload["error"]["code"] == "validation_error"
                 assert (
                     payload["error"]["message"]
-                    == "Request validation failed: content: field required"
+                    == "Request validation failed: content: Field required"
                 )
         finally:
             set_session_store(original_store)
