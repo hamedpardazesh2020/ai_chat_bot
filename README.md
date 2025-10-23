@@ -64,7 +64,14 @@ mcp:
 ```
 
 Set `MCP_AGENT_SERVERS=filesystem,fetch` (or any other two entries defined in
-the configuration file) and choose the LLM the agent should attach:
+the configuration file) and choose the LLM the agent should attach. If you want
+to expose the ham3d catalogue search server defined in
+`mcp_servers/ham3d_mysql.py`, copy `examples/mcp_agent.ham3d.config.yaml`
+and merge it with your own MCP configuration file. The example server expects a
+MySQL database and reads connection information from the `HAM3D_DB_*`
+environment variables (see `.env.example` for the full list).
+
+Choose the LLM the agent should attach:
 
 - The default `MCP_AGENT_LLM=openrouter` requires an `OPENROUTER_KEY`. The
   service automatically wires the OpenRouter credentials into the embedded
