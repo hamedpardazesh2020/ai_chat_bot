@@ -8,8 +8,10 @@ provider failover, and exposes administrative tooling for runtime control and
 observability.
 
 ## Features
-- **Multiple chat providers** – Pluggable connectors for OpenAI, OpenRouter, and
-  MCP endpoints with a unified provider interface.
+- **MCP Agent orchestration** – Built-in integration with the
+  [`mcp-agent`](https://github.com/lastmile-ai/mcp-agent) framework so a single
+  session can reason over multiple MCP servers (for example, `filesystem` plus
+  `fetch`) while delegating tool selection to the LLM.
 - **Session-based memory** – In-memory or Redis-backed transcript storage with
   configurable retention limits and per-session overrides.
 - **Resilience tooling** – Provider fallback, structured error responses, and
@@ -37,45 +39,33 @@ cp .env.example .env
 # edit .env
 ```
 
-Provider clients are registered programmatically. During application start-up,
-create provider instances and register them with the shared
-`ProviderManager` (via `app.dependencies.set_provider_manager`). For example:
+When `MCP_AGENT_SERVERS` lists at least two server identifiers the application
+automatically registers an `MCPAgentChatProvider`. The provider loads its
+server catalogue from the `mcp_agent.config.yaml` file referenced by
+`MCP_AGENT_CONFIG`. A minimal configuration that connects to both the
+filesystem and fetch reference servers looks like this:
 
-```python
-from app.agents.manager import ProviderManager
-from app.agents.providers.openai import OpenAIChatProvider
-from app.dependencies import set_provider_manager
-
-manager = ProviderManager()
-manager.register("openai", OpenAIChatProvider.from_settings())
-manager.set_default("openai")
-set_provider_manager(manager)
+```yaml
+# mcp_agent.config.yaml
+mcp:
+  servers:
+    filesystem:
+      transport: stdio
+      command: npx
+      args:
+        - mcp-server-filesystem
+      env:
+        ROOT: /data
+    fetch:
+      transport: stdio
+      command: npx
+      args:
+        - mcp-server-fetch
 ```
 
-To connect an MCP server, instantiate `MCPChatProvider` with the server URL
-and optional defaults. You can either rely on the `MCP_SERVER_URL` and
-`MCP_API_KEY` environment variables or pass explicit values:
-
-```python
-from app.agents.manager import ProviderManager
-from app.agents.providers.mcp import MCPChatProvider
-from app.dependencies import set_provider_manager
-
-manager = ProviderManager()
-
-# Reads MCP_SERVER_URL / MCP_API_KEY automatically when base_url/api_key
-# are omitted. Override them here if you prefer explicit configuration.
-manager.register(
-    "support-mcp",
-    MCPChatProvider(
-        base_url="https://mcp.example.com",  # e.g. http://localhost:9001
-        default_tool="chat",                 # Optional: tool invoked for chat
-    ),
-)
-
-manager.set_default("support-mcp")
-set_provider_manager(manager)
-```
+Set `MCP_AGENT_SERVERS=filesystem,fetch` (or any other two entries defined in
+the configuration file) and supply an `OPENAI_API_KEY` so the built-in
+`OpenAIAugmentedLLM` can coordinate the tools.
 
 To inject a custom system prompt at the beginning of every conversation, set
 the `INITIAL_SYSTEM_PROMPT` environment variable (or provide it via the YAML
@@ -124,10 +114,15 @@ settings.
 | Variable | Description | Default |
 | --- | --- | --- |
 | `ADMIN_TOKEN` | Token required for admin endpoints. When unset the admin API is disabled. | `None` |
-| `OPENAI_API_KEY` | API key for the OpenAI connector. | `None` |
-| `OPENROUTER_KEY` | API key for the OpenRouter connector. | `None` |
-| `MCP_SERVER_URL` | Base URL for the MCP server. | `None` |
-| `MCP_API_KEY` | Optional MCP API key. | `None` |
+| `OPENAI_API_KEY` | API key consumed by the embedded `mcp-agent` LLM. | `None` |
+| `MCP_SERVER_URL` | Legacy fallback for the deprecated MCP client. | `None` |
+| `MCP_API_KEY` | Optional API key for legacy MCP servers. | `None` |
+| `MCP_AGENT_CONFIG` | Path to an `mcp_agent.config.yaml` describing downstream MCP servers. | `None` |
+| `MCP_AGENT_SERVERS` | Comma separated list of at least two server names to expose to the agent. | `None` |
+| `MCP_AGENT_APP_NAME` | Override the logical name reported by the embedded MCP app. | `chat-backend` |
+| `MCP_AGENT_INSTRUCTION` | Optional instruction passed to the agent instead of `INITIAL_SYSTEM_PROMPT`. | `None` |
+| `MCP_AGENT_LLM` | Identifier for the augmented LLM to attach (currently `openai`). | `openai` |
+| `MCP_AGENT_MODEL` | Default OpenAI model requested by the agent. | `None` |
 | `INITIAL_SYSTEM_PROMPT` | System prompt stored when new sessions are created. | `None` |
 | `REDIS_URL` | Enables Redis-backed memory and rate limiting when provided. | `None` |
 | `RATE_RPS` | Average number of requests per second allowed per identity. | `1.0` |
@@ -158,9 +153,9 @@ settings.
 {
   "content": "Hello there!",
   "role": "user",
-  "provider": "openai",
+  "provider": "mcp-agent",
   "options": {
-    "model": "gpt-4"
+    "model": "gpt-4o-mini"
   }
 }
 ```
@@ -173,7 +168,7 @@ settings.
 ```json
 {
   "session_id": "<uuid>",
-  "provider": "openai",
+  "provider": "mcp-agent",
   "provider_source": "session_default",
   "message": {
     "role": "assistant",

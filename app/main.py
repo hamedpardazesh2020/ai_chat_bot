@@ -11,9 +11,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .admin import router as admin_router
 from .api import sessions_router
+from .agents.providers.mcp import MCPAgentChatProvider, MCPAgentProviderError
 from .config import get_settings
 from .dependencies import (
     get_metrics_collector,
+    get_provider_manager,
     get_rate_limit_bypass_store,
     get_rate_limiter,
 )
@@ -100,6 +102,24 @@ def create_app() -> FastAPI:
         bypass_store=get_rate_limit_bypass_store(),
     )
 
+    provider_logger = logging.getLogger("app.providers")
+    shutdown_callbacks: list[Callable[[], Awaitable[None]]] = []
+
+    if settings.mcp_agent_servers:
+        manager = get_provider_manager()
+        try:
+            provider = MCPAgentChatProvider.from_settings(settings)
+        except MCPAgentProviderError as exc:
+            provider_logger.error(
+                "mcp_provider_registration_failed",
+                extra={"error": str(exc)},
+            )
+        else:
+            manager.register(provider, replace=True)
+            if manager.default is None:
+                manager.set_default(provider.name)
+            shutdown_callbacks.append(provider.aclose)
+
     @application.middleware("http")
     async def _logging_middleware(
         request: Request,
@@ -162,6 +182,17 @@ def create_app() -> FastAPI:
     application.include_router(meta_router)
     application.include_router(admin_router)
     application.include_router(sessions_router)
+
+    if shutdown_callbacks:
+
+        @application.on_event("shutdown")
+        async def _shutdown_providers() -> None:
+            for callback in shutdown_callbacks:
+                try:
+                    await callback()
+                except Exception:  # pragma: no cover - defensive logging
+                    provider_logger.exception("provider_shutdown_failed")
+
     return application
 
 
