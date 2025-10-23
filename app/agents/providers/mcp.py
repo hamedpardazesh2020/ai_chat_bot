@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from dataclasses import dataclass
 from typing import Any, Mapping, MutableMapping, Optional, Sequence, Type
 
@@ -79,11 +80,19 @@ class MCPAgentChatProvider(ChatProvider):
                 "MCP_AGENT_SERVERS must define at least two MCP servers for aggregation."
             )
 
-        llm_class = cls._resolve_llm_class(settings.mcp_agent_llm_provider)
+        llm_identifier = settings.mcp_agent_llm_provider
+        llm_class = cls._resolve_llm_class(llm_identifier)
+
+        if llm_identifier == "openrouter":
+            cls._configure_openrouter_environment(settings)
 
         llm_options: MutableMapping[str, Any] = {}
-        if settings.mcp_agent_default_model:
-            llm_options["default_model"] = settings.mcp_agent_default_model
+        default_model = settings.mcp_agent_default_model
+        if default_model is None and llm_identifier == "openrouter":
+            default_model = settings.openrouter_default_model
+
+        if default_model:
+            llm_options["default_model"] = default_model
 
         app = MCPApp(name=settings.mcp_agent_app_name, settings=settings.mcp_agent_config)
 
@@ -93,8 +102,8 @@ class MCPAgentChatProvider(ChatProvider):
         else:
             instruction = settings.mcp_agent_instruction
 
-        if settings.mcp_agent_default_model:
-            request_overrides["model"] = settings.mcp_agent_default_model
+        if default_model:
+            request_overrides["model"] = default_model
 
         return cls(
             server_names=server_names,
@@ -102,7 +111,7 @@ class MCPAgentChatProvider(ChatProvider):
             llm_class=llm_class,
             llm_options=llm_options,
             app=app,
-            default_model=settings.mcp_agent_default_model,
+            default_model=default_model,
             request_overrides=request_overrides,
         )
 
@@ -110,9 +119,26 @@ class MCPAgentChatProvider(ChatProvider):
     def _resolve_llm_class(identifier: str) -> Type[AugmentedLLM]:
         if identifier == "openai":
             return OpenAIAugmentedLLM
+        if identifier == "openrouter":
+            return OpenAIAugmentedLLM
         raise MCPAgentProviderError(
-            f"Unsupported MCP agent LLM provider '{identifier}'. Currently only 'openai' is available."
+            f"Unsupported MCP agent LLM provider '{identifier}'. Supported values are 'openai' and 'openrouter'."
         )
+
+    @staticmethod
+    def _configure_openrouter_environment(settings: Settings) -> None:
+        api_key = settings.openrouter_key
+        if not api_key:
+            raise MCPAgentProviderError(
+                "OPENROUTER_KEY must be configured when MCP_AGENT_LLM is set to 'openrouter'."
+            )
+
+        os.environ["OPENAI_API_KEY"] = api_key
+        os.environ["OPENAI_BASE_URL"] = settings.openrouter_base_url
+
+        default_model = settings.mcp_agent_default_model or settings.openrouter_default_model
+        if default_model:
+            os.environ["OPENAI_DEFAULT_MODEL"] = default_model
 
     async def chat(
         self,

@@ -64,8 +64,13 @@ mcp:
 ```
 
 Set `MCP_AGENT_SERVERS=filesystem,fetch` (or any other two entries defined in
-the configuration file) and supply an `OPENAI_API_KEY` so the built-in
-`OpenAIAugmentedLLM` can coordinate the tools.
+the configuration file) and choose the LLM the agent should attach:
+
+- The default `MCP_AGENT_LLM=openrouter` requires an `OPENROUTER_KEY`. The
+  service automatically wires the OpenRouter credentials into the embedded
+  agent so no OpenAI API key is needed.
+- To run the agent with OpenAI instead, set `MCP_AGENT_LLM=openai` and provide
+  `OPENAI_API_KEY`.
 
 To inject a custom system prompt at the beginning of every conversation, set
 the `INITIAL_SYSTEM_PROMPT` environment variable (or provide it via the YAML
@@ -114,15 +119,18 @@ settings.
 | Variable | Description | Default |
 | --- | --- | --- |
 | `ADMIN_TOKEN` | Token required for admin endpoints. When unset the admin API is disabled. | `None` |
-| `OPENAI_API_KEY` | API key consumed by the embedded `mcp-agent` LLM. | `None` |
+| `OPENAI_API_KEY` | API key consumed by the embedded `mcp-agent` LLM when `MCP_AGENT_LLM=openai`. | `None` |
+| `OPENROUTER_KEY` | API key used for both the standalone OpenRouter provider and the MCP agent when `MCP_AGENT_LLM=openrouter`. | `None` |
+| `OPENROUTER_BASE_URL` | Override the OpenRouter API endpoint used by both providers. | `https://openrouter.ai/api/v1` |
+| `OPENROUTER_MODEL` | Default OpenRouter model requested when none is supplied explicitly. | `openrouter/auto` |
 | `MCP_SERVER_URL` | Legacy fallback for the deprecated MCP client. | `None` |
 | `MCP_API_KEY` | Optional API key for legacy MCP servers. | `None` |
 | `MCP_AGENT_CONFIG` | Path to an `mcp_agent.config.yaml` describing downstream MCP servers. | `None` |
 | `MCP_AGENT_SERVERS` | Comma separated list of at least two server names to expose to the agent. | `None` |
 | `MCP_AGENT_APP_NAME` | Override the logical name reported by the embedded MCP app. | `chat-backend` |
 | `MCP_AGENT_INSTRUCTION` | Optional instruction passed to the agent instead of `INITIAL_SYSTEM_PROMPT`. | `None` |
-| `MCP_AGENT_LLM` | Identifier for the augmented LLM to attach (currently `openai`). | `openai` |
-| `MCP_AGENT_MODEL` | Default OpenAI model requested by the agent. | `None` |
+| `MCP_AGENT_LLM` | Identifier for the augmented LLM to attach (`openai` or `openrouter`). | `openrouter` |
+| `MCP_AGENT_MODEL` | Default model requested by the agent. Falls back to `OPENROUTER_MODEL` when using OpenRouter. | `None` |
 | `INITIAL_SYSTEM_PROMPT` | System prompt stored when new sessions are created. | `None` |
 | `REDIS_URL` | Enables Redis-backed memory and rate limiting when provided. | `None` |
 | `RATE_RPS` | Average number of requests per second allowed per identity. | `1.0` |

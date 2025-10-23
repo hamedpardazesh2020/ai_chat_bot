@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     admin_token: Optional[str] = Field(default=None, env="ADMIN_TOKEN")
     openai_api_key: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
     openrouter_key: Optional[str] = Field(default=None, env="OPENROUTER_KEY")
+    openrouter_base_url: str = Field(
+        default="https://openrouter.ai/api/v1", env="OPENROUTER_BASE_URL"
+    )
+    openrouter_default_model: str = Field(
+        default="openrouter/auto", env="OPENROUTER_MODEL"
+    )
     mcp_server_url: Optional[str] = Field(default=None, env="MCP_SERVER_URL")
     mcp_api_key: Optional[str] = Field(default=None, env="MCP_API_KEY")
     mcp_agent_config: Optional[str] = Field(default=None, env="MCP_AGENT_CONFIG")
@@ -37,7 +43,7 @@ class Settings(BaseSettings):
     mcp_agent_instruction: Optional[str] = Field(
         default=None, env="MCP_AGENT_INSTRUCTION"
     )
-    mcp_agent_llm_provider: str = Field(default="openai", env="MCP_AGENT_LLM")
+    mcp_agent_llm_provider: str = Field(default="openrouter", env="MCP_AGENT_LLM")
     mcp_agent_default_model: Optional[str] = Field(
         default=None, env="MCP_AGENT_MODEL"
     )
@@ -164,7 +170,7 @@ class Settings(BaseSettings):
     @classmethod
     def _normalise_llm(cls, value: Optional[str]) -> str:
         if not value:
-            return "openai"
+            return "openrouter"
         return str(value).strip().lower()
 
     @property
