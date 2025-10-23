@@ -1,0 +1,17 @@
+# Example MCP agent configuration that wires in the ham3d MySQL server.
+mcp:
+  servers:
+    ham3d:
+      transport: stdio
+      command: python
+      args:
+        - -m
+        - mcp_servers.ham3d_mysql
+      env:
+        HAM3D_DB_HOST: 127.0.0.1
+        HAM3D_DB_PORT: "3306"
+        HAM3D_DB_USER: your-username
+        HAM3D_DB_PASSWORD: your-password
+        HAM3D_DB_NAME: ham3d
+        HAM3D_DB_POOL_MIN_SIZE: "1"
+        HAM3D_DB_POOL_MAX_SIZE: "5"
