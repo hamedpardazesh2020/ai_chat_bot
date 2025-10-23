@@ -28,8 +28,8 @@ class OpenRouterChatProvider(ChatProvider):
         self,
         *,
         api_key: Optional[str] = None,
-        model: str = "openrouter/auto",
-        base_url: str = "https://openrouter.ai/api/v1",
+        model: Optional[str] = None,
+        base_url: Optional[str] = None,
         timeout: Optional[float] = None,
         client: Optional[httpx.AsyncClient] = None,
         default_headers: Optional[Mapping[str, str]] = None,
@@ -42,9 +42,10 @@ class OpenRouterChatProvider(ChatProvider):
         if not self._api_key:
             raise OpenRouterProviderError("OpenRouter API key is required to use the provider.")
 
-        self._model = model
+        self._model = model or settings.openrouter_default_model
         self._timeout = timeout or settings.provider_timeout_seconds
-        self._base_url = base_url.rstrip("/")
+        resolved_base_url = base_url or settings.openrouter_base_url
+        self._base_url = resolved_base_url.rstrip("/")
         self._client_owner = client is None
         self._client = client or httpx.AsyncClient(
             base_url=self._base_url,
