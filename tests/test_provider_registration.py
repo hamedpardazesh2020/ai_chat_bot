@@ -24,6 +24,7 @@ def test_create_app_registers_openrouter_provider(monkeypatch):
     """Providing an OpenRouter key should register the provider by default."""
 
     monkeypatch.setenv("OPENROUTER_KEY", "sk-or-example")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("MCP_AGENT_SERVERS", raising=False)
 
@@ -48,6 +49,7 @@ def test_create_app_registers_openai_provider(monkeypatch):
 
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
     monkeypatch.delenv("OPENROUTER_KEY", raising=False)
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.delenv("MCP_AGENT_SERVERS", raising=False)
 
     _reset_settings_cache()
@@ -70,6 +72,7 @@ def test_create_app_raises_when_no_provider_configured(monkeypatch):
     """Starting the app without any provider configuration should fail fast."""
 
     monkeypatch.delenv("OPENROUTER_KEY", raising=False)
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("MCP_AGENT_SERVERS", raising=False)
 
@@ -82,6 +85,30 @@ def test_create_app_raises_when_no_provider_configured(monkeypatch):
     try:
         with pytest.raises(RuntimeError, match="No chat provider configured"):
             create_app()
+    finally:
+        set_provider_manager(original_manager)
+        _reset_settings_cache()
+
+
+def test_create_app_accepts_openrouter_api_key_alias(monkeypatch):
+    """The service should honour OPENROUTER_API_KEY as an alias for OPENROUTER_KEY."""
+
+    monkeypatch.delenv("OPENROUTER_KEY", raising=False)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-alias")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("MCP_AGENT_SERVERS", raising=False)
+
+    _reset_settings_cache()
+
+    original_manager = get_provider_manager()
+    manager = ProviderManager()
+    set_provider_manager(manager)
+
+    try:
+        create_app()
+        available = manager.available()
+        assert "openrouter" in available
+        assert manager.default == "openrouter"
     finally:
         set_provider_manager(original_manager)
         _reset_settings_cache()
