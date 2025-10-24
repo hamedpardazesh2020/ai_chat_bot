@@ -2,18 +2,47 @@
 
 from __future__ import annotations
 
+import json
 import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from pydantic import Field, field_validator, model_validator
+from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings.sources.providers.env import EnvSettingsSource
+from pydantic_settings.sources.types import ForceDecode, NoDecode
 
 try:  # pragma: no cover - optional dependency
     import yaml
 except Exception:  # pragma: no cover - PyYAML may not be installed
     yaml = None  # type: ignore
+
+
+class _SafeEnvSettingsSource(EnvSettingsSource):
+    """Environment settings source tolerant to non-JSON complex values."""
+
+    def decode_complex_value(self, field_name: str, field: FieldInfo, value: Any) -> Any:
+        if field and (
+            NoDecode in field.metadata
+            or (self.config.get("enable_decoding") is False and ForceDecode not in field.metadata)
+        ):
+            return value
+
+        if isinstance(value, (bytes, bytearray)):
+            value = value.decode()
+
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return ""
+            try:
+                return json.loads(stripped)
+            except json.JSONDecodeError:
+                return value
+
+        return value
 
 
 class Settings(BaseSettings):
@@ -89,7 +118,7 @@ class Settings(BaseSettings):
         return (
             init_settings,
             cls.yaml_config_settings_source,
-            env_settings,
+            _SafeEnvSettingsSource(settings_cls),
             dotenv_settings,
             file_secret_settings,
         )
@@ -161,6 +190,15 @@ class Settings(BaseSettings):
         if value is None:
             return []
         if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return []
+            try:
+                parsed = json.loads(stripped)
+            except json.JSONDecodeError:
+                parsed = None
+            if isinstance(parsed, (list, tuple)):
+                return [str(item).strip() for item in parsed if str(item).strip()]
             return [item.strip() for item in value.split(",") if item.strip()]
         if isinstance(value, (list, tuple)):
             return [str(item).strip() for item in value if str(item).strip()]
