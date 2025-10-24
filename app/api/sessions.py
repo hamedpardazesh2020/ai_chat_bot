@@ -29,14 +29,6 @@ logger = logging.getLogger("app.api.sessions")
 class SessionCreateRequest(BaseModel):
     """Request payload for creating a new chat session."""
 
-    provider: Optional[str] = Field(
-        default=None,
-        description="Preferred provider identifier for the session.",
-    )
-    fallback_provider: Optional[str] = Field(
-        default=None,
-        description="Optional fallback provider to use when the primary fails.",
-    )
     memory_limit: Optional[int] = Field(
         default=None,
         ge=1,
@@ -52,8 +44,6 @@ class SessionResponse(BaseModel):
     """Representation of a chat session returned to API consumers."""
 
     id: UUID
-    provider: Optional[str] = None
-    fallback_provider: Optional[str] = None
     memory_limit: Optional[int] = None
     created_at: datetime
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -76,10 +66,6 @@ class MessageRequest(BaseModel):
         default="user",
         description="Role associated with the message (defaults to 'user').",
     )
-    provider: Optional[str] = Field(
-        default=None,
-        description="Optional provider override for this request.",
-    )
     memory_limit: Optional[int] = Field(
         default=None,
         ge=1,
@@ -95,8 +81,6 @@ class MessageResponse(BaseModel):
     """Response returned after sending a chat message."""
 
     session_id: UUID
-    provider: str
-    provider_source: str
     message: MessagePayload
     usage: dict[str, Any] | None = None
     history: list[MessagePayload]
@@ -107,8 +91,6 @@ def _session_to_payload(session: Session) -> SessionResponse:
 
     return SessionResponse(
         id=session.id,
-        provider=session.provider,
-        fallback_provider=session.fallback_provider,
         memory_limit=session.memory_limit,
         created_at=session.created_at,
         metadata=dict(session.metadata),
@@ -155,6 +137,7 @@ async def create_session(
     request: SessionCreateRequest,
     store: InMemorySessionStore = Depends(get_session_store),
     memory: ChatMemory = Depends(get_chat_memory),
+    providers: ProviderManager = Depends(get_provider_manager),
 ) -> SessionResponse:
     """Create a new chat session with optional provider preferences."""
 
@@ -177,9 +160,18 @@ async def create_session(
                 },
             )
 
+    try:
+        default_resolution = providers.resolve_for_session()
+    except ProviderNotRegisteredError as exc:
+        raise APIError(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            code="provider_not_available",
+            message=str(exc),
+        ) from exc
+
     session = await store.create_session(
-        provider=request.provider,
-        fallback_provider=request.fallback_provider,
+        provider=default_resolution.name,
+        fallback_provider=None,
         memory_limit=request.memory_limit,
         metadata=request.metadata,
     )
@@ -268,7 +260,6 @@ async def post_message(
     try:
         resolution = providers.resolve_for_request(
             session=session,
-            request_override=request.provider,
         )
     except ProviderNotRegisteredError as exc:
         raise APIError(
@@ -394,8 +385,6 @@ async def post_message(
 
     return MessageResponse(
         session_id=session.id,
-        provider=active_resolution.name,
-        provider_source=active_resolution.source,
         message=_provider_to_payload(assistant_message),
         usage=dict(response.usage) if isinstance(response.usage, Mapping) else None,
         history=[_memory_to_payload(message) for message in final_history],

@@ -176,19 +176,9 @@ class ProviderManager:
     def resolve_for_session(
         self,
         *,
-        request_override: Optional[str] = None,
         session_provider: Optional[str] = None,
     ) -> "ProviderManager.ProviderResolution":
-        """Resolve a provider with awareness of session defaults and overrides."""
-
-        if request_override:
-            normalised = self._normalise_name(request_override)
-            provider = self.get(normalised)
-            return self.ProviderResolution(
-                name=normalised,
-                provider=provider,
-                source="override",
-            )
+        """Resolve a provider with awareness of session defaults."""
 
         if session_provider:
             normalised = self._normalise_name(session_provider)
@@ -250,13 +240,11 @@ class ProviderManager:
         self,
         *,
         session: Optional["Session"] = None,
-        request_override: Optional[str] = None,
     ) -> "ProviderManager.ProviderResolution":
         """Resolve a provider using the supplied session model when available."""
 
         session_provider = session.provider if session is not None else None
         return self.resolve_for_session(
-            request_override=request_override,
             session_provider=session_provider,
         )
 

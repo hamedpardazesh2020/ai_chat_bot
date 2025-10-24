@@ -163,6 +163,13 @@ def create_app() -> FastAPI:
                 extra={"requested_provider": desired_default},
             )
 
+    if manager.default is None:
+        raise RuntimeError(
+            "No chat provider configured. Set OPENROUTER_KEY (and related "
+            "environment variables) so the OpenRouter backend registers as the "
+            "default provider before starting the API."
+        )
+
     @application.middleware("http")
     async def _logging_middleware(
         request: Request,

@@ -87,8 +87,7 @@ async def main(config: ExampleConfig) -> None:
 
         session = response.json()
         session_id = session["id"]
-        provider = session.get("provider") or "<service default>"
-        print(f"Created session {session_id} with provider {provider}")
+        print(f"Created session {session_id}")
 
         try:
             message_payload: dict[str, Any] = {
@@ -112,11 +111,7 @@ async def main(config: ExampleConfig) -> None:
 
             payload = message_response.json()
             assistant = payload["message"]["content"]
-            provider_name = payload.get("provider")
-            provider_source = payload.get("provider_source")
-            print(
-                f"Assistant replied (provider={provider_name}, source={provider_source}):"
-            )
+            print("Assistant replied:")
             print(assistant)
             if usage := payload.get("usage"):
                 print("Usage metrics:")

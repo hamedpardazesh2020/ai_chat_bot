@@ -288,15 +288,6 @@
       color: var(--accent);
     }
 
-    .pill {
-      padding: 0.2rem 0.55rem;
-      border-radius: 999px;
-      background: rgba(56, 189, 248, 0.15);
-      color: var(--accent);
-      font-size: 0.7rem;
-      font-weight: 600;
-    }
-
     .hidden {
       display: none;
     }
@@ -368,7 +359,6 @@
       <div class="meta">
         <span class="group">
           <span class="role"></span>
-          <span class="pill provider"></span>
         </span>
         <span class="timestamp"></span>
       </div>
@@ -394,9 +384,6 @@
     const messageOptionsInput = document.getElementById('messageOptions');
 
     let sessionId = null;
-    let sessionProvider = null;
-    let sessionFallback = null;
-
     const formatDateTime = (value) => {
       const date = value instanceof Date ? value : new Date(value);
       return new Intl.DateTimeFormat('fa-IR', {
@@ -404,15 +391,6 @@
         minute: '2-digit',
         second: '2-digit'
       }).format(date);
-    };
-
-    const formatProviderLabel = (name, source) => {
-      if (!name) return '';
-      if (!source || source === 'session') {
-        return name;
-      }
-      const sourceLabel = source === 'fallback' ? 'fallback' : source;
-      return `${name} • ${sourceLabel}`;
     };
 
     const parseJsonField = (value, label) => {
@@ -456,21 +434,13 @@
       return JSON.stringify(payload, null, 2);
     };
 
-    function appendMessage({ role, content, provider, timestamp = new Date(), metadata = null }) {
+    function appendMessage({ role, content, timestamp = new Date(), metadata = null }) {
       const node = messageTemplate.content.firstElementChild.cloneNode(true);
       node.classList.toggle('user', role === 'user');
       node.dataset.role = role;
       node.querySelector('.role').textContent = role === 'assistant' ? 'دستیار' : role === 'system' ? 'سیستم' : 'کاربر';
       node.querySelector('.timestamp').textContent = formatDateTime(timestamp);
       node.querySelector('.body').textContent = content;
-
-      const providerEl = node.querySelector('.provider');
-      if (provider) {
-        providerEl.textContent = provider;
-        providerEl.classList.remove('hidden');
-      } else {
-        providerEl.classList.add('hidden');
-      }
 
       const metadataEl = node.querySelector('.metadata');
       if (metadata && Object.keys(metadata).length > 0) {
@@ -541,10 +511,7 @@
         }
 
         sessionId = data.id;
-        sessionProvider = data.provider || 'پیش‌فرض سرویس';
-        sessionFallback = data.fallback_provider || null;
-        const fallbackText = sessionFallback ? `، پشتیبان: <strong>${sessionFallback}</strong>` : '';
-        sessionStatus.innerHTML = `سشن فعال: <strong>${sessionId}</strong> (پرووایدر: <strong>${sessionProvider}</strong>${fallbackText})`;
+        sessionStatus.innerHTML = `سشن فعال: <strong>${sessionId}</strong>`;
         deleteSessionBtn.classList.remove('hidden');
         messageInput.disabled = false;
         sendBtn.disabled = false;
@@ -552,7 +519,6 @@
         appendMessage({
           role: 'assistant',
           content: 'سشن با موفقیت ساخته شد! حالا پیام خود را ارسال کن.',
-          provider: sessionProvider,
           metadata: Object.keys(data.metadata || {}).length ? data.metadata : null
         });
         requestStatus.textContent = '';
@@ -561,8 +527,6 @@
         requestStatus.textContent = 'ساخت سشن با خطا مواجه شد.';
         sessionStatus.textContent = error.message || 'سشنی ساخته نشده است.';
         sessionId = null;
-        sessionProvider = null;
-        sessionFallback = null;
         deleteSessionBtn.classList.add('hidden');
         messageInput.disabled = true;
         sendBtn.disabled = true;
@@ -582,16 +546,13 @@
         console.warn('حذف سشن با خطا مواجه شد', error);
       }
       sessionId = null;
-      sessionProvider = null;
-      sessionFallback = null;
       sessionStatus.textContent = 'سشنی ساخته نشده است.';
       messageInput.disabled = true;
       sendBtn.disabled = true;
       deleteSessionBtn.classList.add('hidden');
       appendMessage({
         role: 'assistant',
-        content: 'سشن بسته شد.',
-        provider: null
+        content: 'سشن بسته شد.'
       });
       requestStatus.textContent = '';
     }
@@ -613,7 +574,7 @@
         return;
       }
 
-      appendMessage({ role: 'user', content, provider: 'شما', timestamp: new Date() });
+      appendMessage({ role: 'user', content, timestamp: new Date() });
       setLoading(true, 'در انتظار پاسخ سرور');
 
       try {
@@ -641,22 +602,19 @@
           throw new Error(message);
         }
 
-        const providerLabel = formatProviderLabel(data.provider, data.provider_source);
         appendMessage({
           role: data.message.role,
           content: data.message.content,
-          provider: providerLabel || sessionProvider,
           timestamp: data.message.created_at,
           metadata: data.message.metadata || null
         });
-        setLoading(false, providerLabel ? `پاسخ از ${providerLabel}` : 'پاسخ دریافت شد.');
+        setLoading(false, 'پاسخ دریافت شد.');
       } catch (error) {
         console.error(error);
         setLoading(false, 'خطا در ارسال پیام.');
         appendMessage({
           role: 'assistant',
-          content: error.message || 'خطای ناشناخته',
-          provider: 'خطا'
+          content: error.message || 'خطای ناشناخته'
         });
       }
     }

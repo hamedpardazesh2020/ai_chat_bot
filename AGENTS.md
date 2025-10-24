@@ -20,3 +20,15 @@ This repository hosts the FastAPI-based AI chat bot service. Follow these guidel
    - When adding new runnable services or programs, place their Dockerfiles inside the `docker/` directory and update `docker/docker-compose.yml` accordingly.
 
 These instructions apply to the entire repository.
+
+## Provider configuration reminders
+- The backend must always communicate with the primary agent through the
+  OpenRouter API by default. Keep OpenRouter registered and selected through
+  environment variables (for example `OPENROUTER_KEY` and
+  `DEFAULT_PROVIDER`).
+- Provider selection must never be exposed to, or configurable from, any
+  public API surface or example client. All routing changes happen through the
+  environment only.
+- Support optional MCP servers that attach to the agent via environment
+  configuration. The system should operate without MCP settings when they are
+  omitted, and default to OpenRouter-only behaviour.
