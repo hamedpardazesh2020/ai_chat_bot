@@ -32,8 +32,9 @@ pip install -r requirements.txt
 
 ### 2. Configure the service
 Copy `.env.example` to `.env` and update any values for your environment. At a
-minimum set `OPENROUTER_KEY` so the service can authenticate with the OpenRouter
-API and configure an `ADMIN_TOKEN` if you want to access the admin endpoints.
+minimum set `OPENROUTER_KEY` (or `OPENROUTER_API_KEY`) so the service can
+authenticate with the OpenRouter API and configure an `ADMIN_TOKEN` if you want
+to access the admin endpoints.
 The backend always uses the provider defined through environment variables. The
 example configuration already pins `DEFAULT_PROVIDER=openrouter`, so the service
 boots with OpenRouter enabled even before you customise anything else.

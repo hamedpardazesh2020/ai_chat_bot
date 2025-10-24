@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic_settings.sources.providers.env import EnvSettingsSource
@@ -68,7 +68,10 @@ class Settings(BaseSettings):
 
     admin_token: Optional[str] = Field(default=None, env="ADMIN_TOKEN")
     openai_api_key: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
-    openrouter_key: Optional[str] = Field(default=None, env="OPENROUTER_KEY")
+    openrouter_key: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("OPENROUTER_KEY", "OPENROUTER_API_KEY"),
+    )
     openrouter_base_url: str = Field(
         default="https://openrouter.ai/api/v1", env="OPENROUTER_BASE_URL"
     )
