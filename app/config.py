@@ -12,6 +12,7 @@ from pydantic import Field, field_validator, model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic_settings.sources.providers.env import EnvSettingsSource
+from pydantic_settings.sources.providers.dotenv import DotEnvSettingsSource
 from pydantic_settings.sources.types import ForceDecode, NoDecode
 
 try:  # pragma: no cover - optional dependency
@@ -20,10 +21,10 @@ except Exception:  # pragma: no cover - PyYAML may not be installed
     yaml = None  # type: ignore
 
 
-class _SafeEnvSettingsSource(EnvSettingsSource):
-    """Environment settings source tolerant to non-JSON complex values."""
+class _SafeDecodeMixin:
+    """Mixin that relaxes JSON decoding for blank or invalid complex values."""
 
-    def decode_complex_value(self, field_name: str, field: FieldInfo, value: Any) -> Any:
+    def decode_complex_value(self, field_name: str, field: FieldInfo, value: Any) -> Any:  # type: ignore[override]
         if field and (
             NoDecode in field.metadata
             or (self.config.get("enable_decoding") is False and ForceDecode not in field.metadata)
@@ -36,6 +37,8 @@ class _SafeEnvSettingsSource(EnvSettingsSource):
         if isinstance(value, str):
             stripped = value.strip()
             if not stripped:
+                # Treat empty strings as an explicit empty value so downstream validators
+                # can normalise them without Pydantic attempting JSON decoding.
                 return ""
             try:
                 return json.loads(stripped)
@@ -43,6 +46,14 @@ class _SafeEnvSettingsSource(EnvSettingsSource):
                 return value
 
         return value
+
+
+class _SafeEnvSettingsSource(_SafeDecodeMixin, EnvSettingsSource):
+    """Environment settings source tolerant to non-JSON complex values."""
+
+
+class _SafeDotEnvSettingsSource(_SafeDecodeMixin, DotEnvSettingsSource):
+    """Dotenv settings source with forgiving complex value parsing."""
 
 
 class Settings(BaseSettings):
@@ -119,7 +130,7 @@ class Settings(BaseSettings):
             init_settings,
             cls.yaml_config_settings_source,
             _SafeEnvSettingsSource(settings_cls),
-            dotenv_settings,
+            _SafeDotEnvSettingsSource(settings_cls),
             file_secret_settings,
         )
 
