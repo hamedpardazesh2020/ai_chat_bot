@@ -1,0 +1,34 @@
+# Bundled application configuration loaded when environment variables are absent.
+# Update the values for your deployment or override them with environment variables.
+
+admin_token: change-me
+
+default_provider_name: openrouter
+openrouter_key: null
+openrouter_base_url: https://openrouter.ai/api/v1
+openrouter_default_model: openrouter/auto
+
+# Optional OpenAI provider configuration
+openai_api_key: null
+
+# Optional MCP agent configuration
+mcp_agent_config: null
+mcp_agent_servers: []
+mcp_agent_app_name: chat-backend
+mcp_agent_instruction: null
+mcp_agent_llm_provider: openrouter
+mcp_agent_default_model: null
+
+# Redis and rate limiting
+redis_url: null
+rate_rps: 2
+rate_burst: 5
+
+# Session memory controls
+memory_default: 10
+memory_max: 50
+
+# Observability and timeouts
+metrics_enabled: true
+log_level: INFO
+provider_timeout_seconds: 30

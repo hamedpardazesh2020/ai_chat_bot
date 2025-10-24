@@ -12,9 +12,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from .admin import router as admin_router
 from .api import sessions_router
 from .agents.manager import ProviderNotRegisteredError
-from .agents.providers.mcp import MCPAgentChatProvider, MCPAgentProviderError
-from .agents.providers.openai import OpenAIChatProvider, OpenAIProviderError
-from .agents.providers.openrouter import OpenRouterChatProvider, OpenRouterProviderError
+from .agents.providers import (
+    MCPAgentChatProvider,
+    MCPAgentProviderError,
+    OpenAIChatProvider,
+    OpenAIProviderError,
+    OpenRouterChatProvider,
+    OpenRouterProviderError,
+    UnconfiguredChatProvider,
+)
 from .config import get_settings
 from .dependencies import (
     get_metrics_collector,
@@ -164,11 +170,12 @@ def create_app() -> FastAPI:
             )
 
     if manager.default is None:
-        raise RuntimeError(
-            "No chat provider configured. Set OPENROUTER_KEY (and related "
-            "environment variables) so the OpenRouter backend registers as the "
-            "default provider before starting the API."
+        provider_logger.warning(
+            "default_provider_unavailable",
+            extra={"requested_provider": desired_default or None},
         )
+        unconfigured = UnconfiguredChatProvider()
+        _register_provider(unconfigured)
 
     @application.middleware("http")
     async def _logging_middleware(

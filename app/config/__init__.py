@@ -56,6 +56,27 @@ class _SafeDotEnvSettingsSource(_SafeDecodeMixin, DotEnvSettingsSource):
     """Dotenv settings source with forgiving complex value parsing."""
 
 
+_PACKAGE_ROOT = Path(__file__).resolve().parent
+_PROJECT_ROOT = _PACKAGE_ROOT.parent
+
+_DEFAULT_CONFIG_CANDIDATES: tuple[Path, ...] = (
+    _PACKAGE_ROOT / "app.config.yaml",
+    _PACKAGE_ROOT / "app.config.yml",
+    _PACKAGE_ROOT / "app.config.example.yaml",
+    _PACKAGE_ROOT / "app.config.example.yml",
+    _PROJECT_ROOT / "app.config.yaml",
+    _PROJECT_ROOT / "app.config.yml",
+    _PROJECT_ROOT / "app.config.example.yaml",
+    _PROJECT_ROOT / "app.config.example.yml",
+    _PROJECT_ROOT / "config" / "app.config.yaml",
+    _PROJECT_ROOT / "config" / "app.config.yml",
+    _PROJECT_ROOT / "config" / "app.config.example.yaml",
+    _PROJECT_ROOT / "config" / "app.config.example.yml",
+    _PROJECT_ROOT / "config.yaml",
+    _PROJECT_ROOT / "config.yml",
+)
+
+
 class Settings(BaseSettings):
     """Central application settings loaded from environment variables.
 
@@ -70,7 +91,9 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
     openrouter_key: Optional[str] = Field(
         default=None,
-        validation_alias=AliasChoices("OPENROUTER_KEY", "OPENROUTER_API_KEY"),
+        validation_alias=AliasChoices(
+            "openrouter_key", "OPENROUTER_KEY", "OPENROUTER_API_KEY"
+        ),
     )
     openrouter_base_url: str = Field(
         default="https://openrouter.ai/api/v1", env="OPENROUTER_BASE_URL"
@@ -138,25 +161,30 @@ class Settings(BaseSettings):
 
         return (
             init_settings,
-            cls.yaml_config_settings_source,
             _SafeEnvSettingsSource(settings_cls),
             _SafeDotEnvSettingsSource(settings_cls),
+            cls.yaml_config_settings_source,
             file_secret_settings,
         )
 
     @staticmethod
     def yaml_config_settings_source() -> Dict[str, Any]:
-        """Load settings from a YAML file when ``APP_CONFIG_FILE`` is set."""
+        """Load settings from a YAML file when configured or available locally."""
 
-        config_file = os.getenv("APP_CONFIG_FILE")
-        if not config_file:
-            return {}
+        configured_path = os.getenv("APP_CONFIG_FILE")
+        candidate: Optional[Path]
+        if configured_path:
+            candidate = Path(configured_path)
+            if not candidate.exists():
+                raise FileNotFoundError(
+                    f"Config file '{configured_path}' was not found."
+                )
+        else:
+            candidate = Settings._discover_default_config_file()
+            if candidate is None:
+                return {}
 
-        path = Path(config_file)
-        if not path.exists():
-            raise FileNotFoundError(f"Config file '{config_file}' was not found.")
-
-        if path.suffix.lower() not in {".yml", ".yaml"}:
+        if candidate.suffix.lower() not in {".yml", ".yaml"}:
             raise ValueError("Unsupported config format. Expected a .yml or .yaml file.")
 
         if yaml is None:
@@ -164,10 +192,19 @@ class Settings(BaseSettings):
                 "PyYAML is required to load YAML configuration files but is not installed."
             )
 
-        data = yaml.safe_load(path.read_text()) or {}
+        data = yaml.safe_load(candidate.read_text()) or {}
         if not isinstance(data, dict):
             raise ValueError("YAML configuration must define a mapping at the root level.")
         return data
+
+    @staticmethod
+    def _discover_default_config_file() -> Optional[Path]:
+        """Return the first existing config file from the default candidate list."""
+
+        for path in _DEFAULT_CONFIG_CANDIDATES:
+            if path.exists():
+                return path
+        return None
 
     @field_validator("rate_rps")
     @classmethod

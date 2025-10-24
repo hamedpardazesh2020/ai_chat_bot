@@ -31,18 +31,28 @@ pip install -r requirements.txt
 ```
 
 ### 2. Configure the service
-Copy `.env.example` to `.env` and update any values for your environment. At a
-minimum set `OPENROUTER_KEY` (or `OPENROUTER_API_KEY`) so the service can
-authenticate with the OpenRouter API and configure an `ADMIN_TOKEN` if you want
-to access the admin endpoints.
-The backend always uses the provider defined through environment variables. The
-example configuration already pins `DEFAULT_PROVIDER=openrouter`, so the service
-boots with OpenRouter enabled even before you customise anything else.
+Populate configuration values in `app/config/app.config.yaml` so the API can
+start without injecting environment variables during container builds. The
+repository bundles this file with sane defaults, and the settings loader reads
+it automatically when no explicit `APP_CONFIG_FILE` is supplied. Docker images
+can therefore boot without additional bind mounts. Runtime environment
+variables still take precedence, so you can override individual values via
+`docker run -e ...` or your orchestrator. At a minimum set `openrouter_key` (or
+`OPENROUTER_KEY`) so the service can authenticate with the OpenRouter API and
+configure an `admin_token` if you want to access the admin endpoints. The
+bundled configuration pins `default_provider_name: openrouter`, so once
+credentials are provided the service automatically uses the OpenRouter backend.
 
-> **Important:** The API refuses to start when no provider is registered.
-> Ensure `OPENROUTER_KEY` (and related OpenRouter variables) are populated so
-> the default backend initialises correctly. Provider selection cannot be
-> overridden through the HTTP API or sample clients.
+If you prefer traditional dotenv workflows copy `.env.example` to `.env`. Any
+values defined in `.env` or directly in the process environment override the
+YAML configuration file.
+
+If you skip provider credentials the API now starts with a built-in
+`unconfigured` provider that rejects chat requests with a clear error. This
+keeps local development environments and Docker containers healthy while still
+signalling that an upstream model must be configured before the chat endpoints
+become useful. Provider selection cannot be overridden through the HTTP API or
+sample clients.
 
 ```bash
 cp .env.example .env
@@ -76,8 +86,9 @@ mcp:
 Set `MCP_AGENT_SERVERS=filesystem,fetch` (or any other two entries defined in
 the configuration file) and choose the LLM the agent should attach. If you want
 to expose the ham3d catalogue search server defined in
-`mcp_servers/ham3d_mysql.py`, copy `examples/mcp_agent.ham3d.config.yaml`
-and merge it with your own MCP configuration file. The example server expects a
+`mcp_servers/ham3d_mysql.py`, reference the bundled
+`mcp_servers/ham3d_mysql/config/mcp_agent.config.yaml` from your MCP agent
+configuration. The example server expects a
 MySQL database and reads connection information from the `HAM3D_DB_*`
 environment variables (see `mcp_servers/.env.ham3d.example` for the defaults).
 
