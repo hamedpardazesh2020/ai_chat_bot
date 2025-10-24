@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     openrouter_default_model: str = Field(
         default="openrouter/auto", env="OPENROUTER_MODEL"
     )
+    default_provider_name: str = Field(
+        default="openrouter", env="DEFAULT_PROVIDER"
+    )
     mcp_server_url: Optional[str] = Field(default=None, env="MCP_SERVER_URL")
     mcp_api_key: Optional[str] = Field(default=None, env="MCP_API_KEY")
     mcp_agent_config: Optional[str] = Field(default=None, env="MCP_AGENT_CONFIG")
@@ -194,6 +197,16 @@ class Settings(BaseSettings):
         if value <= 0:
             raise ValueError("PROVIDER_TIMEOUT_SECONDS must be greater than 0.")
         return value
+
+    @field_validator("default_provider_name", mode="before")
+    @classmethod
+    def _normalise_default_provider(cls, value: Any) -> str:
+        if value is None:
+            return "openrouter"
+        if isinstance(value, str):
+            trimmed = value.strip()
+            return trimmed or "openrouter"
+        return str(value)
 
     @field_validator("mcp_agent_servers", mode="before")
     @classmethod
