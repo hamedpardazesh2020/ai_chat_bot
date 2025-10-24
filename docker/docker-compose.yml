@@ -9,6 +9,8 @@ services:
       - REDIS_URL=redis://redis:6379/0
     env_file:
       - ../.env
+    volumes:
+      - ../:/app
     depends_on:
       - redis
   redis:
@@ -26,5 +28,7 @@ services:
       - ../.env
     stdin_open: true
     tty: true
+    volumes:
+      - ../:/app
 volumes:
   redis-data:
