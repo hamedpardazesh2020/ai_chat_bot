@@ -451,9 +451,9 @@ async def lifespan(_: FastMCP) -> Iterable[Ham3DLifespanContext]:
 
     host = _db_env("HAM3D_DB_HOST", "127.0.0.1")
     port = int(_db_env("HAM3D_DB_PORT", "3306"))
-    user = _db_env("HAM3D_DB_USER", required=True)
+    user = _db_env("HAM3D_DB_USER", "root", required=True)
     password = _db_env("HAM3D_DB_PASSWORD", "")
-    database = _db_env("HAM3D_DB_NAME", "ham3d")
+    database = _db_env("HAM3D_DB_NAME", "ham3dbot_ham3d_shop")
     minsize = max(1, int(_db_env("HAM3D_DB_POOL_MIN_SIZE", "1")))
     maxsize = max(minsize, int(_db_env("HAM3D_DB_POOL_MAX_SIZE", "10")))
     connect_timeout = float(_db_env("HAM3D_DB_CONNECT_TIMEOUT", "10"))

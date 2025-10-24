@@ -69,7 +69,7 @@ to expose the ham3d catalogue search server defined in
 `mcp_servers/ham3d_mysql.py`, copy `examples/mcp_agent.ham3d.config.yaml`
 and merge it with your own MCP configuration file. The example server expects a
 MySQL database and reads connection information from the `HAM3D_DB_*`
-environment variables (see `.env.example` for the full list).
+environment variables (see `mcp_servers/.env.ham3d.example` for the defaults).
 
 #### Launch the MCP servers
 
@@ -121,18 +121,22 @@ python -m mcp_servers.ham3d_mysql
 > docker compose -f docker/docker-compose.yml --profile mcp build mcp-ham3d
 > docker compose -f docker/docker-compose.yml --profile mcp run --rm mcp-ham3d
 > ```
->
-> Populate the `HAM3D_DB_*` variables in `.env` (or pass them inline) before
-> running the container so the server can connect to your database.
+
+Populate the `HAM3D_DB_*` variables with valid credentials before running the
+container so the server can connect to your database. You can copy
+`mcp_servers/.env.ham3d.example` to `mcp_servers/.env.ham3d` and update the
+values, then load them via `set -a && source mcp_servers/.env.ham3d`.
 
 Do not append a filesystem path after `-m`; Python expects an importable module
 name and will raise `No module named ...` if a path is provided.
 
-> **Tip:** Storing the credentials in `.env` is convenient, but Python will not
-> automatically load that file when you start the MCP server directly. Source
-> the file yourself (`set -a && source .env`) or run the command through a
-> helper such as `python -m dotenv run -- python -m mcp_servers.ham3d_mysql` so
-> the environment variables are populated before the module imports.
+> **Tip:** Storing the credentials in `mcp_servers/.env.ham3d` (or another
+> dedicated env file) is convenient, but Python will not automatically load that
+> file when you start the MCP server directly. Source the file yourself
+> (`set -a && source mcp_servers/.env.ham3d`) or run the command through a
+> helper such as
+> `python -m dotenv run --dotenv-path mcp_servers/.env.ham3d -- python -m mcp_servers.ham3d_mysql`
+> so the environment variables are populated before the module imports.
 
 Choose the LLM the agent should attach:
 
