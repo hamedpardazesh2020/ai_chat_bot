@@ -68,8 +68,8 @@ def test_create_app_registers_openai_provider(monkeypatch):
         _reset_settings_cache()
 
 
-def test_create_app_raises_when_no_provider_configured(monkeypatch):
-    """Starting the app without any provider configuration should fail fast."""
+def test_create_app_registers_unconfigured_provider_when_no_credentials(monkeypatch):
+    """A fallback provider should register when no external providers are configured."""
 
     monkeypatch.delenv("OPENROUTER_KEY", raising=False)
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
@@ -83,8 +83,10 @@ def test_create_app_raises_when_no_provider_configured(monkeypatch):
     set_provider_manager(manager)
 
     try:
-        with pytest.raises(RuntimeError, match="No chat provider configured"):
-            create_app()
+        create_app()
+        available = manager.available()
+        assert set(available) == {"unconfigured"}
+        assert manager.default == "unconfigured"
     finally:
         set_provider_manager(original_manager)
         _reset_settings_cache()

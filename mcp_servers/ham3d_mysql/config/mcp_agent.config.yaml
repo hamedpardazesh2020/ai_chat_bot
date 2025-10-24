@@ -1,4 +1,4 @@
-# Example MCP agent configuration that wires in the ham3d MySQL server.
+# MCP agent configuration that wires in the ham3d MySQL server.
 mcp:
   servers:
     ham3d:
