@@ -2,3 +2,4 @@
 .env
 davari-run.txt
 /.idea
+/app/config
