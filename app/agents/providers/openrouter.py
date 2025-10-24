@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, Mapping, MutableMapping, Optional, Sequence
 
 import httpx
 
 from ..manager import ChatMessage, ChatProvider, ChatResponse, ProviderError
 from ...config import get_settings
+
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "OpenRouterProviderError",
@@ -75,6 +79,8 @@ class OpenRouterChatProvider(ChatProvider):
             "messages": [self._serialise_message(message) for message in messages],
         }
         payload.update(options)
+
+        logger.info("OpenRouter chat request payload: %s", payload)
 
         try:
             response = await self._client.post(

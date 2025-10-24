@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
+import logging
 import math
 import time
 from dataclasses import dataclass
@@ -17,12 +18,17 @@ from starlette.types import ASGIApp
 try:  # pragma: no cover - redis is optional for non-redis deployments
     from redis.asyncio import Redis as AsyncRedis
     from redis.asyncio import from_url as redis_from_url
+    from redis.exceptions import RedisError
 except Exception:  # pragma: no cover - redis may not be installed in tests
     AsyncRedis = None  # type: ignore
     redis_from_url = None  # type: ignore
+    RedisError = None  # type: ignore
 
 if False:  # pragma: no cover - for type checking only
     from .config import Settings
+
+
+logger = logging.getLogger("app.rate_limiter")
 
 
 @dataclass(frozen=True)
@@ -315,7 +321,19 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             identifiers = ["anonymous"]
 
         for identifier in identifiers:
-            decision = await self._limiter.acquire(identifier, tokens=self._tokens)
+            try:
+                decision = await self._limiter.acquire(identifier, tokens=self._tokens)
+            except Exception as exc:  # pragma: no cover - defensive fallback
+                if RedisError is not None and isinstance(exc, RedisError):
+                    logger.warning(
+                        "rate_limit_check_failed",
+                        extra={
+                            "identifier": identifier,
+                            "error": str(exc),
+                        },
+                    )
+                    return await call_next(request)
+                raise
             if not decision.allowed:
                 return self._rate_limited_response(decision.retry_after)
 
