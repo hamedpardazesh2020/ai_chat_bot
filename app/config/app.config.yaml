@@ -7,6 +7,7 @@ default_provider_name: openrouter
 openrouter_key: "12312eqwe652"
 openrouter_base_url: https://openrouter.ai/api/v1
 openrouter_default_model: openrouter/auto
+initial_system_prompt: "تو از طرف روغن بهران هستی، متخصص روغنی..."
 
 # Optional OpenAI provider configuration
 openai_api_key: null
