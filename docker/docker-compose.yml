@@ -7,8 +7,8 @@ services:
       - "8000:8000"
     environment:
       - REDIS_URL=redis://redis:6379/0
-    env_file:
-      - ../.env
+   # env_file:
+   #   - ../.env
     volumes:
       - ../:/app
     depends_on:
@@ -24,8 +24,8 @@ services:
       context: ..
       dockerfile: docker/ham3d.Dockerfile
     profiles: ["mcp"]
-    env_file:
-      - ../.env
+ #   env_file:
+ #     - ../.env
     stdin_open: true
     tty: true
     volumes:
