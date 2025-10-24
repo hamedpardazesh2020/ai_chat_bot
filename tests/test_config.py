@@ -27,3 +27,13 @@ def test_mcp_agent_servers_parses_json_array(monkeypatch):
     monkeypatch.setenv("MCP_AGENT_SERVERS", '["delta", "epsilon"]')
     settings = Settings()
     assert settings.mcp_agent_servers == ["delta", "epsilon"]
+
+
+def test_mcp_agent_servers_blank_dotenv(tmp_path, monkeypatch):
+    """Blank values coming from a dotenv file should not raise errors."""
+
+    env_file = tmp_path / ".env"
+    env_file.write_text("MCP_AGENT_SERVERS=\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    settings = Settings()
+    assert settings.mcp_agent_servers == []
