@@ -17,11 +17,8 @@ class ExampleConfig:
     api_url: str = "http://localhost:8000"
     message: str = "Hello there!"
     message_role: str = "user"
-    provider: str | None = None
-    fallback_provider: str | None = None
     session_memory_limit: int | None = None
     session_metadata: dict[str, Any] = field(default_factory=dict)
-    message_provider: str | None = None
     message_memory_limit: int | None = None
     message_options: dict[str, Any] = field(default_factory=dict)
     timeout: float = 30.0
@@ -61,11 +58,8 @@ class ExampleConfig:
             api_url=os.getenv("CHAT_API_URL", "http://localhost:8000"),
             message=os.getenv("CHAT_USER_MESSAGE", "Hello there!"),
             message_role=os.getenv("CHAT_MESSAGE_ROLE", "user") or "user",
-            provider=os.getenv("CHAT_PROVIDER") or None,
-            fallback_provider=os.getenv("CHAT_FALLBACK_PROVIDER") or None,
             session_memory_limit=_parse_int(os.getenv("CHAT_MEMORY_LIMIT"), "CHAT_MEMORY_LIMIT"),
             session_metadata=_parse_mapping(os.getenv("CHAT_SESSION_METADATA"), "CHAT_SESSION_METADATA"),
-            message_provider=os.getenv("CHAT_MESSAGE_PROVIDER") or None,
             message_memory_limit=_parse_int(
                 os.getenv("CHAT_MESSAGE_MEMORY_LIMIT"),
                 "CHAT_MESSAGE_MEMORY_LIMIT",
@@ -80,10 +74,6 @@ async def main(config: ExampleConfig) -> None:
 
     async with httpx.AsyncClient(base_url=config.api_url, timeout=config.timeout) as client:
         session_payload: dict[str, Any] = {}
-        if config.provider:
-            session_payload["provider"] = config.provider
-        if config.fallback_provider:
-            session_payload["fallback_provider"] = config.fallback_provider
         if config.session_memory_limit is not None:
             session_payload["memory_limit"] = config.session_memory_limit
         if config.session_metadata:
@@ -98,18 +88,13 @@ async def main(config: ExampleConfig) -> None:
         session = response.json()
         session_id = session["id"]
         provider = session.get("provider") or "<service default>"
-        fallback = session.get("fallback_provider") or "<none>"
-        print(
-            f"Created session {session_id} with provider {provider} and fallback {fallback}"
-        )
+        print(f"Created session {session_id} with provider {provider}")
 
         try:
             message_payload: dict[str, Any] = {
                 "content": config.message,
                 "role": config.message_role,
             }
-            if config.message_provider:
-                message_payload["provider"] = config.message_provider
             if config.message_memory_limit is not None:
                 message_payload["memory_limit"] = config.message_memory_limit
             if config.message_options:

@@ -279,6 +279,11 @@
       margin-top: 0.75rem;
     }
 
+    .status.note {
+      margin-top: 0.5rem;
+      color: rgba(226, 232, 240, 0.65);
+    }
+
     .status strong {
       color: var(--accent);
     }
@@ -318,19 +323,6 @@
           value="http://localhost:8000"
         />
       </label>
-      <label>
-        نام پرووایدر (اختیاری)
-        <input
-          id="provider"
-          type="text"
-          placeholder="مثلاً openrouter"
-          value="openrouter"
-        />
-      </label>
-      <label>
-        پرووایدر پشتیبان (اختیاری)
-        <input id="fallback" type="text" placeholder="مثلاً openai" />
-      </label>
       <details>
         <summary>تنظیمات پیشرفته سشن</summary>
         <label>
@@ -344,6 +336,10 @@
       </details>
       <button id="createSession">ساخت سشن جدید</button>
       <p class="status" id="sessionStatus">سشنی ساخته نشده است.</p>
+      <p class="status note">
+        این کلاینت همیشه از سرویس <strong>OpenRouter</strong> با تنظیماتی که در متغیرهای محیطی برنامه (مانند
+        <code class="inline">DEFAULT_PROVIDER</code> و <code class="inline">OPENROUTER_KEY</code>) مشخص می‌کنی استفاده می‌کند.
+      </p>
       <button id="deleteSession" class="hidden" style="background: rgba(248, 113, 113, 0.9); color: #0f172a;">حذف سشن</button>
     </header>
     <main id="messages"></main>
@@ -354,10 +350,6 @@
       </form>
       <details class="message-options">
         <summary>تنظیمات پیام</summary>
-        <label>
-          پرووایدر مخصوص این پیام
-          <input id="messageProvider" type="text" placeholder="مثلاً openai" />
-        </label>
         <label>
           سقف حافظه فقط برای این پیام
           <input id="messageMemory" type="number" min="1" placeholder="مثلاً 5" />
@@ -387,8 +379,6 @@
 
   <script>
     const baseUrlInput = document.getElementById('baseUrl');
-    const providerInput = document.getElementById('provider');
-    const fallbackInput = document.getElementById('fallback');
     const memoryLimitInput = document.getElementById('memoryLimit');
     const metadataInput = document.getElementById('metadata');
     const createSessionBtn = document.getElementById('createSession');
@@ -400,7 +390,6 @@
     const messageInput = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
     const messageTemplate = document.getElementById('messageTemplate');
-    const messageProviderInput = document.getElementById('messageProvider');
     const messageMemoryInput = document.getElementById('messageMemory');
     const messageOptionsInput = document.getElementById('messageOptions');
 
@@ -530,15 +519,14 @@
 
       setLoading(true, 'در حال ساخت سشن جدید');
       try {
+        const payload = {
+          memory_limit: memoryLimit,
+          metadata: Object.keys(metadata).length ? metadata : undefined
+        };
         const response = await fetch(new URL('/sessions', baseUrl), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider: providerInput.value.trim() || undefined,
-            fallback_provider: fallbackInput.value.trim() || undefined,
-            memory_limit: memoryLimit,
-            metadata: Object.keys(metadata).length ? metadata : undefined
-          })
+          body: JSON.stringify(payload)
         });
 
         let data = null;
@@ -554,8 +542,9 @@
 
         sessionId = data.id;
         sessionProvider = data.provider || 'پیش‌فرض سرویس';
-        sessionFallback = data.fallback_provider || 'تعریف نشده';
-        sessionStatus.innerHTML = `سشن فعال: <strong>${sessionId}</strong> (پرووایدر: <strong>${sessionProvider}</strong>، پشتیبان: <strong>${sessionFallback}</strong>)`;
+        sessionFallback = data.fallback_provider || null;
+        const fallbackText = sessionFallback ? `، پشتیبان: <strong>${sessionFallback}</strong>` : '';
+        sessionStatus.innerHTML = `سشن فعال: <strong>${sessionId}</strong> (پرووایدر: <strong>${sessionProvider}</strong>${fallbackText})`;
         deleteSessionBtn.classList.remove('hidden');
         messageInput.disabled = false;
         sendBtn.disabled = false;
@@ -614,11 +603,9 @@
       }
       const baseUrl = baseUrlInput.value.trim();
 
-      let messageProvider;
       let messageMemoryLimit;
       let messageOptions;
       try {
-        messageProvider = messageProviderInput.value.trim();
         messageMemoryLimit = parseOptionalNumber(messageMemoryInput.value, 'سقف حافظه پیام');
         messageOptions = parseJsonField(messageOptionsInput.value, 'آپشن‌های پیام');
       } catch (error) {
@@ -632,7 +619,6 @@
       try {
         const payload = {
           content,
-          provider: messageProvider || undefined,
           memory_limit: messageMemoryLimit,
           options: Object.keys(messageOptions).length ? messageOptions : undefined
         };

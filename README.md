@@ -2,10 +2,11 @@
 
 ## Overview
 The Chat Agent Backend is an asynchronous FastAPI service that brokers chat
-conversations between clients and multiple large language model providers. The
-service maintains per-session memory, enforces global rate limits, supports
-provider failover, and exposes administrative tooling for runtime control and
-observability.
+conversations between clients and OpenRouter-hosted large language models while
+optionally orchestrating Model Context Protocol (MCP) agents. The service
+maintains per-session memory, enforces global rate limits, provides transparent
+failover for environment-configured backends, and exposes administrative
+tooling for runtime control and observability.
 
 ## Features
 - **MCP Agent orchestration** – Built-in integration with the
@@ -31,8 +32,11 @@ pip install -r requirements.txt
 
 ### 2. Configure the service
 Copy `.env.example` to `.env` and update any values for your environment. At a
-minimum you should set credentials for the providers you plan to use and
-configure an `ADMIN_TOKEN` if you want to access the admin endpoints.
+minimum set `OPENROUTER_KEY` so the service can authenticate with the OpenRouter
+API and configure an `ADMIN_TOKEN` if you want to access the admin endpoints.
+You can adjust the default backend by setting `DEFAULT_PROVIDER` in the
+environment; it defaults to `openrouter` so no extra changes are required for
+the standard setup.
 
 ```bash
 cp .env.example .env
@@ -138,13 +142,10 @@ name and will raise `No module named ...` if a path is provided.
 > `python -m dotenv run --dotenv-path mcp_servers/.env.ham3d -- python -m mcp_servers.ham3d_mysql`
 > so the environment variables are populated before the module imports.
 
-Choose the LLM the agent should attach:
-
-- The default `MCP_AGENT_LLM=openrouter` requires an `OPENROUTER_KEY`. The
-  service automatically wires the OpenRouter credentials into the embedded
-  agent so no OpenAI API key is needed.
-- To run the agent with OpenAI instead, set `MCP_AGENT_LLM=openai` and provide
-  `OPENAI_API_KEY`.
+The embedded MCP agent automatically reuses your OpenRouter credentials when
+`MCP_AGENT_LLM` is left at its default (`openrouter`). Advanced deployments can
+swap in a different LLM by setting `MCP_AGENT_LLM` alongside the relevant
+environment variables.
 
 To inject a custom system prompt at the beginning of every conversation, set
 the `INITIAL_SYSTEM_PROMPT` environment variable (or provide it via the YAML
@@ -153,12 +154,13 @@ session is created so that the provider receives it with the very first user
 message.
 
 If you need to call a specific MCP tool per request, supply a `tool_name`
-option when posting a message:
+option when posting a message. This assumes the MCP agent is registered and set
+as the default backend via environment configuration (for example,
+`DEFAULT_PROVIDER=mcp-agent`).
 
 ```json
 {
   "content": "برای من خلاصه بنویس",
-  "provider": "support-mcp",
   "options": { "tool_name": "summarise" }
 }
 ```
@@ -206,7 +208,7 @@ settings.
 | Variable | Description | Default |
 | --- | --- | --- |
 | `ADMIN_TOKEN` | Token required for admin endpoints. When unset the admin API is disabled. | `None` |
-| `OPENAI_API_KEY` | API key consumed by the embedded `mcp-agent` LLM when `MCP_AGENT_LLM=openai`. | `None` |
+| `DEFAULT_PROVIDER` | Name of the provider to use when requests omit overrides. Defaults to the OpenRouter backend. | `openrouter` |
 | `OPENROUTER_KEY` | API key used for both the standalone OpenRouter provider and the MCP agent when `MCP_AGENT_LLM=openrouter`. | `None` |
 | `OPENROUTER_BASE_URL` | Override the OpenRouter API endpoint used by both providers. | `https://openrouter.ai/api/v1` |
 | `OPENROUTER_MODEL` | Default OpenRouter model requested when none is supplied explicitly. | `openrouter/auto` |
@@ -236,19 +238,19 @@ settings.
   This route is only available when `METRICS_ENABLED` is `true`.
 
 ### Session messaging
-- `POST /sessions` – Create a new chat session with optional provider
-  preferences. The response returns the session metadata and identifier.
+- `POST /sessions` – Create a new chat session using the provider defined via
+  environment configuration. The response returns the session metadata and
+  identifier.
 - `DELETE /sessions/{session_id}` – Remove a session and clear all stored
   memory for it.
 - `POST /sessions/{session_id}/messages` – Send a message to an existing session
-  and receive the provider response. The payload accepts optional provider and
-  memory overrides.
+  and receive the provider response. The payload accepts optional memory
+  overrides plus provider-specific options such as temperature or tool hints.
 
 ```json
 {
   "content": "Hello there!",
   "role": "user",
-  "provider": "mcp-agent",
   "options": {
     "model": "gpt-4o-mini"
   }
@@ -323,13 +325,10 @@ deployments or tailor both the session and the first message:
 
 - `CHAT_API_URL` – Base URL for the running API instance (defaults to
   `http://localhost:8000`).
-- `CHAT_PROVIDER` / `CHAT_FALLBACK_PROVIDER` – Preferred session provider and
-  optional fallback.
 - `CHAT_MEMORY_LIMIT` – Memory window requested when creating the session.
 - `CHAT_SESSION_METADATA` – JSON object attached to the session metadata.
 - `CHAT_USER_MESSAGE` – Content of the initial message.
-- `CHAT_MESSAGE_ROLE` / `CHAT_MESSAGE_PROVIDER` – Override the role or provider
-  for the initial message.
+- `CHAT_MESSAGE_ROLE` – Override the role for the initial message.
 - `CHAT_MESSAGE_MEMORY_LIMIT` – Per-request memory limit override.
 - `CHAT_MESSAGE_OPTIONS` – JSON object forwarded to the provider as request
   options (for example, temperature or tool hints).
@@ -343,8 +342,8 @@ browser while the API is running locally. The page uses the Vazir font, polls
 `GET /metrics` on a configurable interval (۲۰ ثانیه به طور پیش‌فرض), and plots
 live charts for total requests, responses, and errors.
 
-The interactive client at `examples/chat.html` now exposes advanced controls for
-session metadata, memory limits, and per-message provider overrides. Use the
+The interactive client at `examples/chat.html` exposes advanced controls for
+session metadata, memory limits, and per-message request options. Use the
 expandable panels to attach JSON metadata or to forward provider specific
 options with each request.
 

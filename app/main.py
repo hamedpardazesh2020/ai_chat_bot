@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .admin import router as admin_router
 from .api import sessions_router
+from .agents.manager import ProviderNotRegisteredError
 from .agents.providers.mcp import MCPAgentChatProvider, MCPAgentProviderError
 from .agents.providers.openai import OpenAIChatProvider, OpenAIProviderError
 from .agents.providers.openrouter import OpenRouterChatProvider, OpenRouterProviderError
@@ -108,15 +109,11 @@ def create_app() -> FastAPI:
     manager = get_provider_manager()
     shutdown_callbacks: list[Callable[[], Awaitable[None]]] = []
 
-    def _register_provider(
-        provider: Any,
-        *,
-        prefer_default: bool = False,
-    ) -> None:
+    def _register_provider(provider: Any) -> None:
         """Register a provider instance and track its shutdown callback."""
 
         manager.register(provider, replace=True)
-        if prefer_default or manager.default is None:
+        if manager.default is None:
             manager.set_default(provider.name)
 
         close_callback = getattr(provider, "aclose", None)
@@ -154,7 +151,17 @@ def create_app() -> FastAPI:
                 extra={"error": str(exc)},
             )
         else:
-            _register_provider(provider, prefer_default=True)
+            _register_provider(provider)
+
+    desired_default = (settings.default_provider_name or "").strip()
+    if desired_default:
+        try:
+            manager.set_default(desired_default)
+        except ProviderNotRegisteredError:
+            provider_logger.warning(
+                "default_provider_unavailable",
+                extra={"requested_provider": desired_default},
+            )
 
     @application.middleware("http")
     async def _logging_middleware(
