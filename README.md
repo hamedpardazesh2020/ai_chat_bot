@@ -81,8 +81,30 @@ npx mcp-server-filesystem
 npx mcp-server-fetch
 ```
 
-For the ham3d catalogue server make sure the `HAM3D_DB_*` variables are set and
-run the module from the project root (note the module path after `-m`):
+For the ham3d catalogue server populate the `HAM3D_DB_*` variables **with real
+values** and then run the module from the project root (note the module path
+after `-m`). The server will raise `RuntimeError: Environment variable
+HAM3D_DB_USER must be configured for the ham3d server.` (or similar) if any of
+the required variables are missing or blank.
+
+```bash
+export HAM3D_DB_HOST=127.0.0.1
+export HAM3D_DB_USER=root
+export HAM3D_DB_PASSWORD="super-secret"
+export HAM3D_DB_NAME=ham3dbot_ham3d_shop
+python -m mcp_servers.ham3d_mysql
+```
+
+PowerShell users can set the variables for the current session like this:
+
+```powershell
+$env:HAM3D_DB_HOST = "127.0.0.1"
+$env:HAM3D_DB_USER = "root"
+$env:HAM3D_DB_PASSWORD = "super-secret"
+$env:HAM3D_DB_NAME = "ham3dbot_ham3d_shop"
+```
+
+After exporting the variables, launch the server:
 
 ```bash
 python -m mcp_servers.ham3d_mysql
@@ -92,6 +114,12 @@ python -m mcp_servers.ham3d_mysql
 
 Do not append a filesystem path after `-m`; Python expects an importable module
 name and will raise `No module named ...` if a path is provided.
+
+> **Tip:** Storing the credentials in `.env` is convenient, but Python will not
+> automatically load that file when you start the MCP server directly. Source
+> the file yourself (`set -a && source .env`) or run the command through a
+> helper such as `python -m dotenv run -- python -m mcp_servers.ham3d_mysql` so
+> the environment variables are populated before the module imports.
 
 Choose the LLM the agent should attach:
 
