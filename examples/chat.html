@@ -10,10 +10,10 @@
       color-scheme: light dark;
       --bg: #0f172a;
       --bg-card: rgba(15, 23, 42, 0.7);
-      --bg-input: rgba(255, 255, 255, 0.1);
+      --bg-input: rgba(255, 255, 255, 0.08);
       --fg: #e2e8f0;
       --accent: #38bdf8;
-      --accent-soft: rgba(56, 189, 248, 0.2);
+      --accent-soft: rgba(56, 189, 248, 0.18);
       font-family: 'Vazir', 'Vazirmatn', sans-serif;
     }
 
@@ -32,8 +32,8 @@
 
     .app {
       width: min(960px, 100%);
-      background: rgba(15, 23, 42, 0.75);
-      border: 1px solid rgba(148, 163, 184, 0.15);
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid rgba(148, 163, 184, 0.2);
       border-radius: 18px;
       box-shadow: 0 24px 80px rgba(15, 23, 42, 0.45);
       backdrop-filter: blur(18px);
@@ -68,15 +68,29 @@
       font-size: 0.9rem;
     }
 
-    header input, header select {
+    header input,
+    header select {
       width: 100%;
       margin-top: 0.35rem;
       padding: 0.65rem 0.75rem;
       border-radius: 12px;
-      border: 1px solid rgba(148, 163, 184, 0.3);
+      border: 1px solid rgba(148, 163, 184, 0.35);
       background: rgba(15, 23, 42, 0.55);
       color: inherit;
       font: inherit;
+    }
+
+    header textarea {
+      width: 100%;
+      margin-top: 0.5rem;
+      padding: 0.75rem;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(15, 23, 42, 0.55);
+      color: inherit;
+      font: inherit;
+      min-height: 90px;
+      resize: vertical;
     }
 
     header button {
@@ -97,6 +111,24 @@
       box-shadow: 0 12px 30px rgba(56, 189, 248, 0.35);
     }
 
+    header details {
+      margin-top: 0.9rem;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(15, 23, 42, 0.55);
+      padding: 0.75rem 1rem;
+    }
+
+    header details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: rgba(226, 232, 240, 0.9);
+    }
+
+    header details[open] summary {
+      margin-bottom: 0.5rem;
+    }
+
     main {
       padding: 1.25rem;
       overflow-y: auto;
@@ -108,23 +140,24 @@
 
     .message {
       display: grid;
-      gap: 0.4rem;
-      padding: 0.9rem 1rem;
+      gap: 0.5rem;
+      padding: 0.95rem 1rem;
       border-radius: 16px;
       background: rgba(148, 163, 184, 0.12);
-      border: 1px solid rgba(148, 163, 184, 0.15);
+      border: 1px solid rgba(148, 163, 184, 0.18);
       position: relative;
+      backdrop-filter: blur(6px);
     }
 
     .message.user {
       margin-left: auto;
       background: rgba(56, 189, 248, 0.12);
-      border-color: rgba(56, 189, 248, 0.2);
+      border-color: rgba(56, 189, 248, 0.25);
     }
 
     .message .meta {
       font-size: 0.8rem;
-      color: rgba(226, 232, 240, 0.65);
+      color: rgba(226, 232, 240, 0.7);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -132,11 +165,28 @@
       flex-wrap: wrap;
     }
 
+    .message .meta .group {
+      display: inline-flex;
+      gap: 0.35rem;
+      align-items: center;
+    }
+
     .message .body {
       font-size: 0.95rem;
       line-height: 1.8;
       white-space: pre-wrap;
       word-break: break-word;
+    }
+
+    .message .metadata {
+      font-size: 0.75rem;
+      line-height: 1.6;
+      padding: 0.6rem 0.75rem;
+      background: rgba(15, 23, 42, 0.45);
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      direction: ltr;
+      text-align: left;
     }
 
     footer {
@@ -158,7 +208,7 @@
       resize: vertical;
       padding: 0.75rem;
       border-radius: 16px;
-      border: 1px solid rgba(148, 163, 184, 0.3);
+      border: 1px solid rgba(148, 163, 184, 0.35);
       background: rgba(15, 23, 42, 0.55);
       color: inherit;
       font: inherit;
@@ -185,9 +235,47 @@
       box-shadow: 0 12px 28px rgba(56, 189, 248, 0.3);
     }
 
+    footer details {
+      margin-top: 1rem;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(15, 23, 42, 0.5);
+      padding: 0.75rem 1rem;
+    }
+
+    footer details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: rgba(226, 232, 240, 0.9);
+    }
+
+    footer details[open] summary {
+      margin-bottom: 0.5rem;
+    }
+
+    footer details label {
+      display: block;
+      margin-top: 0.65rem;
+      font-size: 0.85rem;
+    }
+
+    footer details input,
+    footer details textarea {
+      width: 100%;
+      margin-top: 0.35rem;
+      padding: 0.6rem 0.75rem;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(15, 23, 42, 0.55);
+      color: inherit;
+      font: inherit;
+      resize: vertical;
+      min-height: 60px;
+    }
+
     .status {
       font-size: 0.85rem;
-      color: rgba(226, 232, 240, 0.75);
+      color: rgba(226, 232, 240, 0.8);
       margin-top: 0.75rem;
     }
 
@@ -204,14 +292,15 @@
       font-weight: 600;
     }
 
-    .divider {
-      margin: 1.5rem 0;
-      border: none;
-      border-top: 1px dashed rgba(148, 163, 184, 0.25);
-    }
-
     .hidden {
       display: none;
+    }
+
+    code.inline {
+      background: rgba(148, 163, 184, 0.2);
+      padding: 0.1rem 0.4rem;
+      border-radius: 8px;
+      direction: ltr;
     }
   </style>
 </head>
@@ -221,7 +310,7 @@
       <h1>کلاینت چت FastAPI</h1>
       <p>برای شروع آدرس سرویس را وارد کن تا سشن جدید ساخته شود.</p>
       <label>
-        آدرس سرور (مثلاً <code>http://localhost:8000</code>)
+        آدرس سرور (مثلاً <code class="inline">http://localhost:8000</code>)
         <input
           id="baseUrl"
           type="url"
@@ -234,14 +323,25 @@
         <input
           id="provider"
           type="text"
-          placeholder="مثلاً openai"
+          placeholder="مثلاً openrouter"
           value="openrouter"
         />
       </label>
       <label>
         پرووایدر پشتیبان (اختیاری)
-        <input id="fallback" type="text" placeholder="مثلاً openrouter" />
+        <input id="fallback" type="text" placeholder="مثلاً openai" />
       </label>
+      <details>
+        <summary>تنظیمات پیشرفته سشن</summary>
+        <label>
+          سقف حافظه‌ی سشن (تعداد پیام)
+          <input id="memoryLimit" type="number" min="1" placeholder="مثلاً 20" />
+        </label>
+        <label>
+          متادیتا (JSON اختیاری)
+          <textarea id="metadata" placeholder='{"topic":"demo"}'></textarea>
+        </label>
+      </details>
       <button id="createSession">ساخت سشن جدید</button>
       <p class="status" id="sessionStatus">سشنی ساخته نشده است.</p>
       <button id="deleteSession" class="hidden" style="background: rgba(248, 113, 113, 0.9); color: #0f172a;">حذف سشن</button>
@@ -252,6 +352,21 @@
         <textarea id="messageInput" placeholder="پیامت را اینجا بنویس..." disabled></textarea>
         <button type="submit" id="sendBtn" disabled>ارسال</button>
       </form>
+      <details class="message-options">
+        <summary>تنظیمات پیام</summary>
+        <label>
+          پرووایدر مخصوص این پیام
+          <input id="messageProvider" type="text" placeholder="مثلاً openai" />
+        </label>
+        <label>
+          سقف حافظه فقط برای این پیام
+          <input id="messageMemory" type="number" min="1" placeholder="مثلاً 5" />
+        </label>
+        <label>
+          آپشن‌های اضافه (JSON)
+          <textarea id="messageOptions" placeholder='{"temperature":0.7}'></textarea>
+        </label>
+      </details>
       <p class="status" id="requestStatus"></p>
     </footer>
   </div>
@@ -259,11 +374,14 @@
   <template id="messageTemplate">
     <div class="message">
       <div class="meta">
-        <span class="role"></span>
-        <span class="pill provider"></span>
+        <span class="group">
+          <span class="role"></span>
+          <span class="pill provider"></span>
+        </span>
         <span class="timestamp"></span>
       </div>
       <div class="body"></div>
+      <div class="metadata hidden"></div>
     </div>
   </template>
 
@@ -271,6 +389,8 @@
     const baseUrlInput = document.getElementById('baseUrl');
     const providerInput = document.getElementById('provider');
     const fallbackInput = document.getElementById('fallback');
+    const memoryLimitInput = document.getElementById('memoryLimit');
+    const metadataInput = document.getElementById('metadata');
     const createSessionBtn = document.getElementById('createSession');
     const deleteSessionBtn = document.getElementById('deleteSession');
     const sessionStatus = document.getElementById('sessionStatus');
@@ -280,10 +400,16 @@
     const messageInput = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
     const messageTemplate = document.getElementById('messageTemplate');
+    const messageProviderInput = document.getElementById('messageProvider');
+    const messageMemoryInput = document.getElementById('messageMemory');
+    const messageOptionsInput = document.getElementById('messageOptions');
 
     let sessionId = null;
+    let sessionProvider = null;
+    let sessionFallback = null;
 
-    const formatDateTime = (date = new Date()) => {
+    const formatDateTime = (value) => {
+      const date = value instanceof Date ? value : new Date(value);
       return new Intl.DateTimeFormat('fa-IR', {
         hour: '2-digit',
         minute: '2-digit',
@@ -291,29 +417,97 @@
       }).format(date);
     };
 
-    function appendMessage({ role, content, provider, timestamp = new Date() }) {
+    const formatProviderLabel = (name, source) => {
+      if (!name) return '';
+      if (!source || source === 'session') {
+        return name;
+      }
+      const sourceLabel = source === 'fallback' ? 'fallback' : source;
+      return `${name} • ${sourceLabel}`;
+    };
+
+    const parseJsonField = (value, label) => {
+      if (!value.trim()) {
+        return {};
+      }
+      try {
+        const parsed = JSON.parse(value);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch (error) {
+        // handled below
+      }
+      throw new Error(`${label} باید JSON معتبر از نوع آبجکت باشد.`);
+    };
+
+    const parseOptionalNumber = (value, label) => {
+      const trimmed = value.trim();
+      if (!trimmed) return undefined;
+      const number = Number(trimmed);
+      if (!Number.isFinite(number) || number < 1) {
+        throw new Error(`${label} باید یک عدد بزرگ‌تر از صفر باشد.`);
+      }
+      return number;
+    };
+
+    const extractErrorMessage = (payload) => {
+      if (!payload) return 'خطای ناشناخته از سمت سرور.';
+      if (typeof payload === 'string') return payload;
+      if (payload.error) {
+        if (typeof payload.error === 'string') return payload.error;
+        if (typeof payload.error.message === 'string') return payload.error.message;
+      }
+      if (payload.detail) {
+        if (typeof payload.detail === 'string') return payload.detail;
+        if (Array.isArray(payload.detail) && payload.detail.length) {
+          return payload.detail.map((item) => item.msg).join('، ');
+        }
+      }
+      return JSON.stringify(payload, null, 2);
+    };
+
+    function appendMessage({ role, content, provider, timestamp = new Date(), metadata = null }) {
       const node = messageTemplate.content.firstElementChild.cloneNode(true);
       node.classList.toggle('user', role === 'user');
-      node.querySelector('.role').textContent = role === 'assistant' ? 'دستیار' : 'کاربر';
+      node.dataset.role = role;
+      node.querySelector('.role').textContent = role === 'assistant' ? 'دستیار' : role === 'system' ? 'سیستم' : 'کاربر';
       node.querySelector('.timestamp').textContent = formatDateTime(timestamp);
       node.querySelector('.body').textContent = content;
+
       const providerEl = node.querySelector('.provider');
       if (provider) {
         providerEl.textContent = provider;
+        providerEl.classList.remove('hidden');
       } else {
         providerEl.classList.add('hidden');
       }
+
+      const metadataEl = node.querySelector('.metadata');
+      if (metadata && Object.keys(metadata).length > 0) {
+        metadataEl.textContent = JSON.stringify(metadata, null, 2);
+        metadataEl.classList.remove('hidden');
+      } else {
+        metadataEl.classList.add('hidden');
+      }
+
       messagesEl.appendChild(node);
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
+    function clearMessages() {
+      messagesEl.innerHTML = '';
+    }
+
     function setLoading(loading, message = '') {
       if (loading) {
-        requestStatus.innerHTML = `در حال ارسال... <strong>${message}</strong>`;
+        requestStatus.innerHTML = `در حال پردازش... <strong>${message}</strong>`;
         sendBtn.disabled = true;
+        createSessionBtn.disabled = true;
       } else {
         requestStatus.textContent = message;
         sendBtn.disabled = !sessionId;
+        createSessionBtn.disabled = false;
       }
     }
 
@@ -324,44 +518,67 @@
         return;
       }
 
-      setLoading(true);
+      let metadata;
+      let memoryLimit;
+      try {
+        metadata = parseJsonField(metadataInput.value, 'متادیتا');
+        memoryLimit = parseOptionalNumber(memoryLimitInput.value, 'سقف حافظه سشن');
+      } catch (error) {
+        alert(error.message);
+        return;
+      }
+
+      setLoading(true, 'در حال ساخت سشن جدید');
       try {
         const response = await fetch(new URL('/sessions', baseUrl), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             provider: providerInput.value.trim() || undefined,
-            fallback_provider: fallbackInput.value.trim() || undefined
+            fallback_provider: fallbackInput.value.trim() || undefined,
+            memory_limit: memoryLimit,
+            metadata: Object.keys(metadata).length ? metadata : undefined
           })
         });
 
-        if (!response.ok) {
-          throw await response.json();
+        let data = null;
+        try {
+          data = await response.json();
+        } catch (error) {
+          /* ignore non JSON */
         }
 
-        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(extractErrorMessage(data));
+        }
+
         sessionId = data.id;
-        sessionStatus.innerHTML = `سشن فعال: <strong>${sessionId}</strong>`;
+        sessionProvider = data.provider || 'پیش‌فرض سرویس';
+        sessionFallback = data.fallback_provider || 'تعریف نشده';
+        sessionStatus.innerHTML = `سشن فعال: <strong>${sessionId}</strong> (پرووایدر: <strong>${sessionProvider}</strong>، پشتیبان: <strong>${sessionFallback}</strong>)`;
         deleteSessionBtn.classList.remove('hidden');
         messageInput.disabled = false;
         sendBtn.disabled = false;
-        messagesEl.innerHTML = '';
+        clearMessages();
         appendMessage({
           role: 'assistant',
           content: 'سشن با موفقیت ساخته شد! حالا پیام خود را ارسال کن.',
-          provider: providerInput.value.trim() || null
+          provider: sessionProvider,
+          metadata: Object.keys(data.metadata || {}).length ? data.metadata : null
         });
         requestStatus.textContent = '';
       } catch (error) {
         console.error(error);
         requestStatus.textContent = 'ساخت سشن با خطا مواجه شد.';
-        sessionStatus.textContent = 'سشنی ساخته نشده است.';
+        sessionStatus.textContent = error.message || 'سشنی ساخته نشده است.';
         sessionId = null;
+        sessionProvider = null;
+        sessionFallback = null;
         deleteSessionBtn.classList.add('hidden');
         messageInput.disabled = true;
         sendBtn.disabled = true;
       } finally {
-        setLoading(false);
+        setLoading(false, sessionId ? 'سشن آماده است.' : '');
       }
     }
 
@@ -376,6 +593,8 @@
         console.warn('حذف سشن با خطا مواجه شد', error);
       }
       sessionId = null;
+      sessionProvider = null;
+      sessionFallback = null;
       sessionStatus.textContent = 'سشنی ساخته نشده است.';
       messageInput.disabled = true;
       sendBtn.disabled = true;
@@ -385,6 +604,7 @@
         content: 'سشن بسته شد.',
         provider: null
       });
+      requestStatus.textContent = '';
     }
 
     async function sendMessage(content) {
@@ -394,36 +614,56 @@
       }
       const baseUrl = baseUrlInput.value.trim();
 
-      appendMessage({ role: 'user', content, provider: 'you', timestamp: new Date() });
+      let messageProvider;
+      let messageMemoryLimit;
+      let messageOptions;
+      try {
+        messageProvider = messageProviderInput.value.trim();
+        messageMemoryLimit = parseOptionalNumber(messageMemoryInput.value, 'سقف حافظه پیام');
+        messageOptions = parseJsonField(messageOptionsInput.value, 'آپشن‌های پیام');
+      } catch (error) {
+        alert(error.message);
+        return;
+      }
+
+      appendMessage({ role: 'user', content, provider: 'شما', timestamp: new Date() });
       setLoading(true, 'در انتظار پاسخ سرور');
 
       try {
+        const payload = {
+          content,
+          provider: messageProvider || undefined,
+          memory_limit: messageMemoryLimit,
+          options: Object.keys(messageOptions).length ? messageOptions : undefined
+        };
+
         const response = await fetch(new URL(`/sessions/${sessionId}/messages`, baseUrl), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            content,
-            provider: providerInput.value.trim() || undefined,
-            fallback_provider: fallbackInput.value.trim() || undefined
-          })
+          body: JSON.stringify(payload)
         });
 
-        const data = await response.json();
-        if (!response.ok) {
-          const errorMessage =
-            typeof data?.error === 'string'
-              ? data.error
-              : data?.error?.message || 'پاسخ نامعتبر';
-          throw new Error(errorMessage);
+        let data = null;
+        try {
+          data = await response.json();
+        } catch (error) {
+          /* ignore */
         }
 
+        if (!response.ok) {
+          const message = extractErrorMessage(data);
+          throw new Error(message);
+        }
+
+        const providerLabel = formatProviderLabel(data.provider, data.provider_source);
         appendMessage({
-          role: 'assistant',
-          content: data.response?.content ?? '[پاسخی دریافت نشد]',
-          provider: data.response?.provider || data.provider || providerInput.value.trim(),
-          timestamp: new Date()
+          role: data.message.role,
+          content: data.message.content,
+          provider: providerLabel || sessionProvider,
+          timestamp: data.message.created_at,
+          metadata: data.message.metadata || null
         });
-        setLoading(false, 'پاسخ دریافت شد.');
+        setLoading(false, providerLabel ? `پاسخ از ${providerLabel}` : 'پاسخ دریافت شد.');
       } catch (error) {
         console.error(error);
         setLoading(false, 'خطا در ارسال پیام.');
