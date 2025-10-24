@@ -12,6 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from .admin import router as admin_router
 from .api import sessions_router
 from .agents.providers.mcp import MCPAgentChatProvider, MCPAgentProviderError
+from .agents.providers.openai import OpenAIChatProvider, OpenAIProviderError
+from .agents.providers.openrouter import OpenRouterChatProvider, OpenRouterProviderError
 from .config import get_settings
 from .dependencies import (
     get_metrics_collector,
@@ -103,10 +105,47 @@ def create_app() -> FastAPI:
     )
 
     provider_logger = logging.getLogger("app.providers")
+    manager = get_provider_manager()
     shutdown_callbacks: list[Callable[[], Awaitable[None]]] = []
 
+    def _register_provider(
+        provider: Any,
+        *,
+        prefer_default: bool = False,
+    ) -> None:
+        """Register a provider instance and track its shutdown callback."""
+
+        manager.register(provider, replace=True)
+        if prefer_default or manager.default is None:
+            manager.set_default(provider.name)
+
+        close_callback = getattr(provider, "aclose", None)
+        if callable(close_callback):
+            shutdown_callbacks.append(close_callback)
+
+    if settings.openrouter_key:
+        try:
+            provider = OpenRouterChatProvider()
+        except OpenRouterProviderError as exc:
+            provider_logger.error(
+                "openrouter_provider_registration_failed",
+                extra={"error": str(exc)},
+            )
+        else:
+            _register_provider(provider)
+
+    if settings.openai_api_key:
+        try:
+            provider = OpenAIChatProvider()
+        except OpenAIProviderError as exc:
+            provider_logger.error(
+                "openai_provider_registration_failed",
+                extra={"error": str(exc)},
+            )
+        else:
+            _register_provider(provider)
+
     if settings.mcp_agent_servers:
-        manager = get_provider_manager()
         try:
             provider = MCPAgentChatProvider.from_settings(settings)
         except MCPAgentProviderError as exc:
@@ -115,10 +154,7 @@ def create_app() -> FastAPI:
                 extra={"error": str(exc)},
             )
         else:
-            manager.register(provider, replace=True)
-            if manager.default is None:
-                manager.set_default(provider.name)
-            shutdown_callbacks.append(provider.aclose)
+            _register_provider(provider, prefer_default=True)
 
     @application.middleware("http")
     async def _logging_middleware(
