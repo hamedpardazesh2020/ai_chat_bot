@@ -71,6 +71,28 @@ and merge it with your own MCP configuration file. The example server expects a
 MySQL database and reads connection information from the `HAM3D_DB_*`
 environment variables (see `.env.example` for the full list).
 
+#### Launch the MCP servers
+
+Start each configured server in its own terminal so the agent can connect over
+`stdio`:
+
+```bash
+npx mcp-server-filesystem
+npx mcp-server-fetch
+```
+
+For the ham3d catalogue server make sure the `HAM3D_DB_*` variables are set and
+run the module from the project root (note the module path after `-m`):
+
+```bash
+python -m mcp_servers.ham3d_mysql
+# Windows PowerShell example when using a virtual environment
+.\.venv\Scripts\python.exe -m mcp_servers.ham3d_mysql
+```
+
+Do not append a filesystem path after `-m`; Python expects an importable module
+name and will raise `No module named ...` if a path is provided.
+
 Choose the LLM the agent should attach:
 
 - The default `MCP_AGENT_LLM=openrouter` requires an `OPENROUTER_KEY`. The
