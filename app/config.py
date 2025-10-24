@@ -84,7 +84,11 @@ class Settings(BaseSettings):
     mcp_server_url: Optional[str] = Field(default=None, env="MCP_SERVER_URL")
     mcp_api_key: Optional[str] = Field(default=None, env="MCP_API_KEY")
     mcp_agent_config: Optional[str] = Field(default=None, env="MCP_AGENT_CONFIG")
-    mcp_agent_servers: list[str] = Field(default_factory=list, env="MCP_AGENT_SERVERS")
+    mcp_agent_servers: list[str] = Field(
+        default_factory=list,
+        env="MCP_AGENT_SERVERS",
+        metadata=[NoDecode()],
+    )
     mcp_agent_app_name: str = Field(default="chat-backend", env="MCP_AGENT_APP_NAME")
     mcp_agent_instruction: Optional[str] = Field(
         default=None, env="MCP_AGENT_INSTRUCTION"
