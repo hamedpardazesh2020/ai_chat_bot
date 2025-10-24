@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import os
+
+os.environ.setdefault("OPENROUTER_KEY", "sk-or-test")
+
+import pytest
+
 from app.agents.manager import ProviderManager
 from app.config import get_settings
 from app.dependencies import get_provider_manager, set_provider_manager
@@ -55,6 +61,27 @@ def test_create_app_registers_openai_provider(monkeypatch):
         available = manager.available()
         assert "openai" in available
         assert manager.default == "openai"
+    finally:
+        set_provider_manager(original_manager)
+        _reset_settings_cache()
+
+
+def test_create_app_raises_when_no_provider_configured(monkeypatch):
+    """Starting the app without any provider configuration should fail fast."""
+
+    monkeypatch.delenv("OPENROUTER_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("MCP_AGENT_SERVERS", raising=False)
+
+    _reset_settings_cache()
+
+    original_manager = get_provider_manager()
+    manager = ProviderManager()
+    set_provider_manager(manager)
+
+    try:
+        with pytest.raises(RuntimeError, match="No chat provider configured"):
+            create_app()
     finally:
         set_provider_manager(original_manager)
         _reset_settings_cache()

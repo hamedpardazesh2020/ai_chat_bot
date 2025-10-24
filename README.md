@@ -34,9 +34,14 @@ pip install -r requirements.txt
 Copy `.env.example` to `.env` and update any values for your environment. At a
 minimum set `OPENROUTER_KEY` so the service can authenticate with the OpenRouter
 API and configure an `ADMIN_TOKEN` if you want to access the admin endpoints.
-You can adjust the default backend by setting `DEFAULT_PROVIDER` in the
-environment; it defaults to `openrouter` so no extra changes are required for
-the standard setup.
+The backend always uses the provider defined through environment variables. The
+example configuration already pins `DEFAULT_PROVIDER=openrouter`, so the service
+boots with OpenRouter enabled even before you customise anything else.
+
+> **Important:** The API refuses to start when no provider is registered.
+> Ensure `OPENROUTER_KEY` (and related OpenRouter variables) are populated so
+> the default backend initialises correctly. Provider selection cannot be
+> overridden through the HTTP API or sample clients.
 
 ```bash
 cp .env.example .env
@@ -208,7 +213,7 @@ settings.
 | Variable | Description | Default |
 | --- | --- | --- |
 | `ADMIN_TOKEN` | Token required for admin endpoints. When unset the admin API is disabled. | `None` |
-| `DEFAULT_PROVIDER` | Name of the provider to use when requests omit overrides. Defaults to the OpenRouter backend. | `openrouter` |
+| `DEFAULT_PROVIDER` | Name of the provider the backend uses for every request. Clients cannot override this value. | `openrouter` |
 | `OPENROUTER_KEY` | API key used for both the standalone OpenRouter provider and the MCP agent when `MCP_AGENT_LLM=openrouter`. | `None` |
 | `OPENROUTER_BASE_URL` | Override the OpenRouter API endpoint used by both providers. | `https://openrouter.ai/api/v1` |
 | `OPENROUTER_MODEL` | Default OpenRouter model requested when none is supplied explicitly. | `openrouter/auto` |
@@ -240,7 +245,9 @@ settings.
 ### Session messaging
 - `POST /sessions` – Create a new chat session using the provider defined via
   environment configuration. The response returns the session metadata and
-  identifier.
+  identifier. The backend always selects the OpenRouter integration configured
+  through environment variables; clients cannot override or even see the
+  provider choice through the public API.
 - `DELETE /sessions/{session_id}` – Remove a session and clear all stored
   memory for it.
 - `POST /sessions/{session_id}/messages` – Send a message to an existing session
@@ -262,22 +269,7 @@ settings.
 > rejected by FastAPI's validation layer with a `content: field required`
 > error. Update any clients to provide `content` to avoid HTTP 422 responses.
 
-```json
-{
-  "session_id": "<uuid>",
-  "provider": "mcp-agent",
-  "provider_source": "session_default",
-  "message": {
-    "role": "assistant",
-    "content": "Hi! How can I help you today?",
-    "created_at": "2025-10-06T18:20:00Z"
-  },
-  "history": [
-    { "role": "user", "content": "Hello there!", "created_at": "..." },
-    { "role": "assistant", "content": "Hi! How can I help you today?", "created_at": "..." }
-  ]
-}
-```
+
 
 ### Admin endpoints
 All admin routes require the `X-Admin-Token` header.
@@ -352,7 +344,8 @@ options with each request.
   Redis-backed implementation for both session memory and distributed rate
   limiting.
 - Providers are intentionally decoupled from FastAPI dependencies to ease unit
-  testing; you can swap providers by overriding `ProviderManager` during tests.
+  testing; you can swap providers by overriding `ProviderManager` during tests
+  without exposing additional provider selection controls to API consumers.
 - Error responses use a consistent `{ "error": { "code": ..., "message": ... } }`
   structure; clients should surface the embedded `X-Request-ID` for support
   cases.

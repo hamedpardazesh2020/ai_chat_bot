@@ -1,6 +1,10 @@
 import asyncio
 from uuid import UUID, uuid4
 
+import os
+
+os.environ.setdefault("OPENROUTER_KEY", "sk-or-test")
+
 import pytest
 
 from httpx import ASGITransport, AsyncClient
@@ -13,11 +17,13 @@ from app.sessions import (
 from app.dependencies import (
     get_chat_memory,
     get_metrics_collector,
+    get_provider_manager,
     get_rate_limit_bypass_store,
     get_rate_limiter,
     get_session_store,
     set_chat_memory,
     set_metrics_collector,
+    set_provider_manager,
     set_rate_limit_bypass_store,
     set_rate_limiter,
     set_session_store,
@@ -26,15 +32,31 @@ from app.main import create_app
 from app.memory import ChatMessage as MemoryChatMessage, InMemoryChatMemory
 from app.observability import MetricsCollector
 from app.rate_limiter import InMemoryRateLimiter, RateLimitBypassStore
+from app.agents.manager import (
+    ChatMessage as ProviderChatMessage,
+    ChatResponse,
+    ProviderManager,
+)
+
+
+class _SilentProvider:
+    name = "openrouter"
+
+    async def chat(self, messages, **options):  # type: ignore[override]
+        return ChatResponse(
+            message=ProviderChatMessage(role="assistant", content="placeholder"),
+            raw={},
+            usage={},
+        )
 
 
 def test_create_and_get_session_uses_defaults():
     async def _run() -> None:
         store = InMemorySessionStore(default_memory_limit=7)
 
-        session = await store.create_session(provider="openai")
+        session = await store.create_session()
 
-        assert session.provider == "openai"
+        assert session.provider is None
         assert session.memory_limit == 7
 
         fetched = await store.get_session(session.id)
@@ -71,18 +93,24 @@ def test_session_lifecycle_endpoints_manage_store_and_memory() -> None:
         original_limiter = get_rate_limiter()
         original_bypass = get_rate_limit_bypass_store()
         original_metrics = get_metrics_collector()
+        original_manager = get_provider_manager()
 
         store = InMemorySessionStore()
         memory = InMemoryChatMemory(default_limit=5)
         limiter = InMemoryRateLimiter(rate=1000, capacity=1000)
         bypass = RateLimitBypassStore()
         metrics = MetricsCollector()
+        manager = ProviderManager()
+        provider = _SilentProvider()
+        manager.register(provider)
+        manager.set_default(provider.name)
 
         set_session_store(store)
         set_chat_memory(memory)
         set_rate_limiter(limiter)
         set_rate_limit_bypass_store(bypass)
         set_metrics_collector(metrics)
+        set_provider_manager(manager)
 
         app = create_app()
         transport = ASGITransport(app=app)
@@ -91,12 +119,11 @@ def test_session_lifecycle_endpoints_manage_store_and_memory() -> None:
             async with AsyncClient(transport=transport, base_url="http://testserver") as client:
                 response = await client.post(
                     "/sessions",
-                    json={"provider": "openai", "metadata": {"topic": "demo"}},
+                    json={"metadata": {"topic": "demo"}},
                 )
                 assert response.status_code == 201
                 payload = response.json()
                 session_id = UUID(payload["id"])
-                assert payload["provider"] == "openai"
                 assert payload["metadata"] == {"topic": "demo"}
 
                 await memory.append(
@@ -112,6 +139,7 @@ def test_session_lifecycle_endpoints_manage_store_and_memory() -> None:
         finally:
             set_session_store(original_store)
             set_chat_memory(original_memory)
+            set_provider_manager(original_manager)
             set_rate_limiter(original_limiter)
             set_rate_limit_bypass_store(original_bypass)
             set_metrics_collector(original_metrics)
@@ -126,18 +154,24 @@ def test_missing_message_content_returns_readable_validation_error() -> None:
         original_limiter = get_rate_limiter()
         original_bypass = get_rate_limit_bypass_store()
         original_metrics = get_metrics_collector()
+        original_manager = get_provider_manager()
 
         store = InMemorySessionStore()
         memory = InMemoryChatMemory(default_limit=5)
         limiter = InMemoryRateLimiter(rate=1000, capacity=1000)
         bypass = RateLimitBypassStore()
         metrics = MetricsCollector()
+        manager = ProviderManager()
+        provider = _SilentProvider()
+        manager.register(provider)
+        manager.set_default(provider.name)
 
         set_session_store(store)
         set_chat_memory(memory)
         set_rate_limiter(limiter)
         set_rate_limit_bypass_store(bypass)
         set_metrics_collector(metrics)
+        set_provider_manager(manager)
 
         app = create_app()
         transport = ASGITransport(app=app)
@@ -163,8 +197,10 @@ def test_missing_message_content_returns_readable_validation_error() -> None:
         finally:
             set_session_store(original_store)
             set_chat_memory(original_memory)
+            set_provider_manager(original_manager)
             set_rate_limiter(original_limiter)
             set_rate_limit_bypass_store(original_bypass)
             set_metrics_collector(original_metrics)
 
     asyncio.run(_run())
+
