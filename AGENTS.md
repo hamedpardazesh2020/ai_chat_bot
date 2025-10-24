@@ -17,5 +17,6 @@ This repository hosts the FastAPI-based AI chat bot service. Follow these guidel
 
 4. **Documentation**
    - Update `README.md` and `.env.example` whenever configuration or usage changes.
+   - When adding new runnable services or programs, place their Dockerfiles inside the `docker/` directory and update `docker/docker-compose.yml` accordingly.
 
 These instructions apply to the entire repository.

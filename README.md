@@ -112,6 +112,19 @@ python -m mcp_servers.ham3d_mysql
 .\.venv\Scripts\python.exe -m mcp_servers.ham3d_mysql
 ```
 
+> **Docker option:** Build and launch the ham3d server through the dedicated
+> `docker/ham3d.Dockerfile` when you prefer container isolation. The
+> compose file in `docker/docker-compose.yml`
+> exposes an optional profile so the service only starts when requested:
+>
+> ```bash
+> docker compose -f docker/docker-compose.yml --profile mcp build mcp-ham3d
+> docker compose -f docker/docker-compose.yml --profile mcp run --rm mcp-ham3d
+> ```
+>
+> Populate the `HAM3D_DB_*` variables in `.env` (or pass them inline) before
+> running the container so the server can connect to your database.
+
 Do not append a filesystem path after `-m`; Python expects an importable module
 name and will raise `No module named ...` if a path is provided.
 
@@ -157,11 +170,24 @@ Create a `.env` file (for example by copying `.env.example`) so sensitive
 configuration stays outside of version control.
 
 ```bash
-docker compose up --build
+docker compose -f docker/docker-compose.yml up --build
 ```
 
 The API will be available at <http://localhost:8000>. Redis data persists in the
-`redis-data` Docker volume defined by the compose file.
+`redis-data` Docker volume defined by the compose file. Run the command from the
+repository root so the compose file can reference project-relative paths.
+
+All Docker assets (Dockerfiles plus additional notes) live in the `docker/`
+directory. See `docker/README.md` for advanced build options or to run the
+containers manually with `docker build`.
+
+To include the optional ham3d MCP server, enable the `mcp` profile when starting
+Compose. The profile keeps the service disabled by default so deployments that
+do not need ham3d remain unaffected.
+
+```bash
+docker compose -f docker/docker-compose.yml --profile mcp up mcp-ham3d
+```
 
 ### 5. Execute the test suite
 ```bash
@@ -288,14 +314,35 @@ cleans up afterwards. Run it against a local server with:
 python examples/basic_session.py
 ```
 
-The script reads the `CHAT_API_URL`, `CHAT_PROVIDER`, and `CHAT_USER_MESSAGE`
-environment variables so you can target remote deployments or experiment with
-different providers and prompts.
+The script honours the following environment variables so you can target remote
+deployments or tailor both the session and the first message:
+
+- `CHAT_API_URL` – Base URL for the running API instance (defaults to
+  `http://localhost:8000`).
+- `CHAT_PROVIDER` / `CHAT_FALLBACK_PROVIDER` – Preferred session provider and
+  optional fallback.
+- `CHAT_MEMORY_LIMIT` – Memory window requested when creating the session.
+- `CHAT_SESSION_METADATA` – JSON object attached to the session metadata.
+- `CHAT_USER_MESSAGE` – Content of the initial message.
+- `CHAT_MESSAGE_ROLE` / `CHAT_MESSAGE_PROVIDER` – Override the role or provider
+  for the initial message.
+- `CHAT_MESSAGE_MEMORY_LIMIT` – Per-request memory limit override.
+- `CHAT_MESSAGE_OPTIONS` – JSON object forwarded to the provider as request
+  options (for example, temperature or tool hints).
+- `CHAT_REQUEST_TIMEOUT` – HTTP timeout in seconds when calling the API.
+
+All JSON fields must decode to an object. Invalid values raise a descriptive
+error before any network call is attempted.
 
 For a visual look at the service health, open `examples/metrics.html` in a
 browser while the API is running locally. The page uses the Vazir font, polls
 `GET /metrics` on a configurable interval (۲۰ ثانیه به طور پیش‌فرض), and plots
 live charts for total requests, responses, and errors.
+
+The interactive client at `examples/chat.html` now exposes advanced controls for
+session metadata, memory limits, and per-message provider overrides. Use the
+expandable panels to attach JSON metadata or to forward provider specific
+options with each request.
 
 ## Development notes
 - The default memory backend is in-process. Setting `REDIS_URL` enables the
