@@ -4,7 +4,7 @@
 admin_token: change-me
 
 default_provider_name: openrouter
-openrouter_key: null
+openrouter_key: "12312eqwe652"
 openrouter_base_url: https://openrouter.ai/api/v1
 openrouter_default_model: openrouter/auto
 
@@ -20,7 +20,7 @@ mcp_agent_llm_provider: openrouter
 mcp_agent_default_model: null
 
 # Redis and rate limiting
-redis_url: null
+redis_url: redis://localhost:6379/0
 rate_rps: 2
 rate_burst: 5
 
