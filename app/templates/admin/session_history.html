@@ -1,0 +1,369 @@
+{% extends "admin/base.html" %}
+
+{% block title %}تاریخچه چت‌های سشن{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div class="header-content">
+      <h2>تاریخچه گفتگوهای سشن</h2>
+      <a href="{{ request.url_for('admin-ui-active-sessions') }}" class="secondary back-button">
+        ← بازگشت به لیست سشن‌ها
+      </a>
+    </div>
+  </div>
+
+  <section class="session-info-card">
+    <div class="card">
+      <h3>اطلاعات سشن</h3>
+      <div class="info-grid" id="sessionInfo">
+        <div class="info-item">
+          <span class="label">شناسه سشن:</span>
+          <span class="value" id="sessionId">-</span>
+        </div>
+        <div class="info-item">
+          <span class="label">تاریخ ایجاد:</span>
+          <span class="value" id="sessionCreated">-</span>
+        </div>
+        <div class="info-item">
+          <span class="label">ارائه‌دهنده:</span>
+          <span class="value" id="sessionProvider">-</span>
+        </div>
+        <div class="info-item">
+          <span class="label">تعداد پیام‌ها:</span>
+          <span class="value" id="messageCount">-</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="messages-section">
+    <div class="card">
+      <div class="header">
+        <h2>پیام‌های گفتگو</h2>
+        <div class="header-actions">
+          <button type="button" class="primary" id="refreshMessages">به‌روزرسانی</button>
+        </div>
+      </div>
+      <p class="status-message" id="messagesStatus"></p>
+      <div class="messages-container" id="messagesContainer"></div>
+    </div>
+  </section>
+{% endblock %}
+
+{% block extra_js %}
+  <style>
+    .page-header {
+      margin-bottom: 2rem;
+    }
+
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .header-content h2 {
+      margin: 0;
+      font-size: 1.8rem;
+      color: var(--primary-dark);
+    }
+
+    .back-button {
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .session-info-card {
+      margin-bottom: 2rem;
+    }
+
+    .session-info-card h3 {
+      margin: 0 0 1.25rem 0;
+      font-size: 1.2rem;
+      color: var(--primary);
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .info-item .label {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .info-item .value {
+      font-size: 1.05rem;
+      color: var(--text);
+      word-break: break-all;
+    }
+
+    .messages-section .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .messages-section .header h2 {
+      margin: 0;
+      font-size: 1.35rem;
+      color: var(--primary);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .messages-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      margin-top: 1.5rem;
+      max-height: 600px;
+      overflow-y: auto;
+      padding: 0.5rem;
+    }
+
+    .message {
+      border-radius: 16px;
+      padding: 1.25rem;
+      line-height: 1.8;
+      font-size: 0.95rem;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      transition: transform 0.15s ease, box-shadow 0.2s ease;
+    }
+
+    .message:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+    }
+
+    .message.user {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(37, 99, 235, 0.12));
+      border-color: rgba(37, 99, 235, 0.25);
+    }
+
+    .message.assistant {
+      background: linear-gradient(135deg, rgba(249, 115, 22, 0.08), rgba(249, 115, 22, 0.14));
+      border-color: rgba(249, 115, 22, 0.25);
+    }
+
+    .message.system {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.05), rgba(15, 23, 42, 0.08));
+      border-color: rgba(15, 23, 42, 0.15);
+    }
+
+    .message .meta {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+    }
+
+    .message .meta .role-badge {
+      background: rgba(255, 255, 255, 0.6);
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+
+    .message.user .meta .role-badge {
+      background: rgba(37, 99, 235, 0.2);
+      color: var(--primary-dark);
+    }
+
+    .message.assistant .meta .role-badge {
+      background: rgba(249, 115, 22, 0.2);
+      color: #c2410c;
+    }
+
+    .message.system .meta .role-badge {
+      background: rgba(15, 23, 42, 0.15);
+      color: var(--text);
+    }
+
+    .message .content {
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 4rem 1rem;
+      color: var(--muted);
+    }
+
+    .empty-state p {
+      font-size: 1.1rem;
+      margin: 0;
+    }
+
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .messages-section .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const sessionIdElem = document.getElementById("sessionId");
+      const sessionCreatedElem = document.getElementById("sessionCreated");
+      const sessionProviderElem = document.getElementById("sessionProvider");
+      const messageCountElem = document.getElementById("messageCount");
+      const messagesContainer = document.getElementById("messagesContainer");
+      const messagesStatus = document.getElementById("messagesStatus");
+      const refreshBtn = document.getElementById("refreshMessages");
+
+      // استخراج session_id از URL
+      const pathParts = window.location.pathname.split("/");
+      const sessionId = pathParts[pathParts.length - 2]; // /admin/ui/sessions/{id}/history
+
+      if (!sessionId) {
+        messagesStatus.textContent = "شناسه سشن در URL یافت نشد.";
+        messagesStatus.classList.add("error");
+        return;
+      }
+
+      sessionIdElem.textContent = sessionId;
+
+      function setStatus(message, isError = false) {
+        messagesStatus.textContent = message;
+        messagesStatus.classList.toggle("error", Boolean(isError));
+      }
+
+      function formatDate(value) {
+        try {
+          return new Date(value).toLocaleString("fa-IR", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        } catch (error) {
+          return value;
+        }
+      }
+
+      function renderEmptyState() {
+        messagesContainer.innerHTML = `
+          <div class="empty-state">
+            <p>هیچ پیامی برای این سشن یافت نشد.</p>
+          </div>
+        `;
+      }
+
+      function renderMessages(messages) {
+        messagesContainer.innerHTML = "";
+
+        if (!messages.length) {
+          renderEmptyState();
+          return;
+        }
+
+        messages.forEach((message) => {
+          const messageDiv = document.createElement("div");
+          messageDiv.className = `message ${message.role}`;
+
+          const meta = document.createElement("div");
+          meta.className = "meta";
+
+          const roleBadge = document.createElement("span");
+          roleBadge.className = "role-badge";
+          roleBadge.textContent = message.role === "user" ? "کاربر" : message.role === "assistant" ? "دستیار" : "سیستم";
+
+          const timestamp = document.createElement("span");
+          if (message.stored_at) {
+            timestamp.textContent = formatDate(message.stored_at);
+          } else if (message.created_at) {
+            timestamp.textContent = formatDate(message.created_at);
+          }
+
+          meta.appendChild(roleBadge);
+          meta.appendChild(timestamp);
+
+          const content = document.createElement("div");
+          content.className = "content";
+          content.textContent = message.content;
+
+          messageDiv.appendChild(meta);
+          messageDiv.appendChild(content);
+          messagesContainer.appendChild(messageDiv);
+        });
+      }
+
+      async function loadSessionData() {
+        setStatus("در حال دریافت اطلاعات سشن...");
+
+        try {
+          // دریافت اطلاعات سشن
+          const sessions = await AdminUI.adminFetch("/admin/sessions");
+          const session = sessions.find((s) => s.id === sessionId);
+
+          if (session) {
+            sessionCreatedElem.textContent = formatDate(session.created_at);
+            sessionProviderElem.textContent = session.provider || "-";
+          }
+
+          // دریافت پیام‌ها
+          setStatus("در حال دریافت پیام‌ها...");
+          const messages = await AdminUI.adminFetch(`/admin/sessions/${sessionId}/messages`);
+
+          messageCountElem.textContent = messages.length;
+          renderMessages(messages);
+
+          if (messages.length === 0) {
+            setStatus("هیچ پیامی برای این سشن یافت نشد.");
+          } else {
+            setStatus(`${messages.length} پیام بارگذاری شد.`);
+          }
+        } catch (error) {
+          setStatus("خطا در دریافت اطلاعات: " + error.message, true);
+          renderEmptyState();
+        }
+      }
+
+      refreshBtn.addEventListener("click", () => {
+        loadSessionData();
+      });
+
+      // بارگذاری اولیه
+      loadSessionData();
+    });
+  </script>
+{% endblock %}

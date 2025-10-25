@@ -291,12 +291,29 @@ async def runtime_diagnostics(_: str = Depends(require_admin_token)) -> RuntimeD
     response_description="Active sessions currently stored in memory.",
 )
 async def list_active_sessions(
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
     store: InMemorySessionStore = Depends(get_session_store),
     _: str = Depends(require_admin_token),
 ) -> list[ActiveSessionSummary]:
-    """Return the currently active sessions tracked by the runtime."""
+    """Return the currently active sessions tracked by the runtime.
+
+    Optionally filter by creation date range:
+    - start_date: Only return sessions created on or after this datetime
+    - end_date: Only return sessions created on or before this datetime
+    """
 
     sessions = await store.list_sessions()
+
+    # Apply date filtering if provided
+    filtered_sessions = []
+    for session in sessions:
+        if start_date and session.created_at < start_date:
+            continue
+        if end_date and session.created_at > end_date:
+            continue
+        filtered_sessions.append(session)
+
     return [
         ActiveSessionSummary(
             id=session.id,
@@ -306,7 +323,7 @@ async def list_active_sessions(
             created_at=session.created_at,
             metadata=dict(session.metadata),
         )
-        for session in sessions
+        for session in filtered_sessions
     ]
 
 
