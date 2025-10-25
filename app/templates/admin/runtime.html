@@ -1,0 +1,76 @@
+{% extends "admin/base.html" %}
+
+{% block title %}اطلاعات سرویس{% endblock %}
+
+{% block content %}
+  <h2>نمای کلی پیکربندی سرویس</h2>
+  <p>
+    در این بخش خلاصه‌ای از پیکربندی فعلی سرویس شامل اطلاعات ارائه‌دهندگان، حافظهٔ گفتگو و وضعیت
+    فعال‌سازی MCP نمایش داده می‌شود. این اطلاعات برای عیب‌یابی سریع و تطبیق تنظیمات مفید است.
+  </p>
+
+  <section class="grid">
+    <article class="card runtime-card">
+      <div class="header">
+        <h2>وضعیت پیکربندی</h2>
+        <button type="button" class="primary" id="refreshRuntime">به‌روزرسانی</button>
+      </div>
+      <p class="status-message" id="runtimeStatus"></p>
+      <pre id="runtimeOutput" class="runtime-output" aria-live="polite">برای مشاهده اطلاعات روی «به‌روزرسانی» کلیک کنید.</pre>
+    </article>
+  </section>
+{% endblock %}
+
+{% block extra_js %}
+  <style>
+    .runtime-card .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .runtime-output {
+      background: #f8fafc;
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      padding: 1rem;
+      min-height: 320px;
+      direction: ltr;
+      text-align: left;
+      overflow-x: auto;
+      font-family: "SFMono-Regular", "Consolas", "Courier New", monospace;
+      font-size: 0.92rem;
+      white-space: pre-wrap;
+    }
+  </style>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const refreshButton = document.getElementById("refreshRuntime");
+      const statusElement = document.getElementById("runtimeStatus");
+      const outputElement = document.getElementById("runtimeOutput");
+
+      function setStatus(message, isError = false) {
+        statusElement.textContent = message;
+        statusElement.classList.toggle("error", Boolean(isError));
+      }
+
+      async function fetchRuntime() {
+        setStatus("در حال دریافت اطلاعات...");
+        try {
+          const payload = await AdminUI.adminFetch("/admin/runtime");
+          outputElement.textContent = JSON.stringify(payload, null, 2);
+          setStatus("اطلاعات با موفقیت به‌روزرسانی شد.");
+        } catch (error) {
+          outputElement.textContent = "مشکلی در دریافت اطلاعات رخ داد.";
+          setStatus(error.message, true);
+        }
+      }
+
+      refreshButton.addEventListener("click", fetchRuntime);
+      fetchRuntime();
+    });
+  </script>
+{% endblock %}

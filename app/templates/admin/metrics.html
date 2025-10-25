@@ -1,0 +1,274 @@
+{% extends "admin/base.html" %}
+
+{% block title %}نمای زنده متریک‌ها{% endblock %}
+
+{% block content %}
+  <section class="metrics-header">
+    <div>
+      <h2>نمای زنده متریک‌های سرویس</h2>
+      <p>
+        آخرین وضعیت درخواست‌ها و پاسخ‌ها در این بخش به‌صورت نمودار زنده نمایش داده می‌شود. برای
+        دسترسی دقیق‌تر می‌توانید بازهٔ به‌روزرسانی را تغییر دهید.
+      </p>
+      <p>آخرین به‌روزرسانی: <strong id="lastUpdated">—</strong></p>
+    </div>
+    <div class="interval-control">
+      <label for="intervalSelect">بازهٔ به‌روزرسانی</label>
+      <select id="intervalSelect">
+        <option value="5000">۵ ثانیه</option>
+        <option value="10000">۱۰ ثانیه</option>
+        <option value="20000" selected>۲۰ ثانیه</option>
+        <option value="30000">۳۰ ثانیه</option>
+        <option value="60000">۶۰ ثانیه</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="stats" aria-live="polite">
+    <div class="stat-card">
+      <h3>تعداد کل درخواست‌ها</h3>
+      <p id="requestsTotal">۰</p>
+    </div>
+    <div class="stat-card">
+      <h3>تعداد کل پاسخ‌ها</h3>
+      <p id="responsesTotal">۰</p>
+    </div>
+    <div class="stat-card">
+      <h3>تعداد خطاها</h3>
+      <p id="errorsTotal">۰</p>
+    </div>
+    <div class="stat-card">
+      <h3>میانگین تأخیر (میلی‌ثانیه)</h3>
+      <p id="latencyAvg">۰</p>
+    </div>
+  </section>
+
+  <div class="chart-wrapper">
+    <canvas id="metricsChart" aria-label="نمودار روند درخواست‌ها" role="img"></canvas>
+  </div>
+  <p class="status-message" id="metricsStatus"></p>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+  <style>
+    .metrics-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .metrics-header h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.6rem;
+      color: var(--primary-dark);
+    }
+
+    .metrics-header p {
+      margin: 0 0 0.5rem;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .interval-control {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      min-width: 160px;
+    }
+
+    .interval-control label {
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .interval-control select {
+      padding: 0.6rem 1rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.85);
+      font-family: inherit;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.2rem;
+      margin-top: 2rem;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      padding: 1.5rem;
+      box-shadow: 0 16px 35px rgba(15, 23, 42, 0.08);
+    }
+
+    .stat-card h3 {
+      margin: 0 0 0.5rem;
+      font-size: 1.05rem;
+      color: var(--muted);
+    }
+
+    .stat-card p {
+      margin: 0;
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: var(--primary-dark);
+    }
+
+    .chart-wrapper {
+      margin-top: 2.5rem;
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: 20px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      padding: 1rem;
+      box-shadow: inset 0 3px 18px rgba(15, 23, 42, 0.06);
+    }
+
+    .status-message {
+      margin-top: 1rem;
+    }
+  </style>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const requestsTotal = document.getElementById("requestsTotal");
+      const responsesTotal = document.getElementById("responsesTotal");
+      const errorsTotal = document.getElementById("errorsTotal");
+      const latencyAvg = document.getElementById("latencyAvg");
+      const lastUpdated = document.getElementById("lastUpdated");
+      const intervalSelect = document.getElementById("intervalSelect");
+      const statusMessage = document.getElementById("metricsStatus");
+      const ctx = document.getElementById("metricsChart");
+
+      const dataPoints = {
+        labels: [],
+        requests: [],
+        responses: [],
+        errors: [],
+      };
+
+      const chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: dataPoints.labels,
+          datasets: [
+            {
+              label: "درخواست‌ها",
+              data: dataPoints.requests,
+              borderColor: "#2563eb",
+              backgroundColor: "rgba(37, 99, 235, 0.15)",
+              tension: 0.35,
+              fill: true,
+            },
+            {
+              label: "پاسخ‌ها",
+              data: dataPoints.responses,
+              borderColor: "#22c55e",
+              backgroundColor: "rgba(34, 197, 94, 0.18)",
+              tension: 0.35,
+              fill: true,
+            },
+            {
+              label: "خطاها",
+              data: dataPoints.errors,
+              borderColor: "#f97316",
+              backgroundColor: "rgba(249, 115, 22, 0.18)",
+              tension: 0.35,
+              fill: true,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: {
+                font: { family: "Vazir", size: 12 },
+              },
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                font: { family: "Vazir" },
+              },
+            },
+            x: {
+              ticks: {
+                font: { family: "Vazir" },
+              },
+            },
+          },
+        },
+      });
+
+      let timer = null;
+
+      function setStatus(message, isError = false) {
+        statusMessage.textContent = message;
+        statusMessage.classList.toggle("error", Boolean(isError));
+      }
+
+      function scheduleNext(interval) {
+        if (timer) {
+          clearTimeout(timer);
+        }
+        timer = setTimeout(fetchMetrics, interval);
+      }
+
+      function updateChart(snapshot) {
+        const timestamp = new Date().toLocaleTimeString("fa-IR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+        dataPoints.labels.push(timestamp);
+        dataPoints.requests.push(snapshot.requests_total);
+        dataPoints.responses.push(snapshot.responses_total);
+        dataPoints.errors.push(snapshot.errors_total);
+        if (dataPoints.labels.length > 15) {
+          dataPoints.labels.shift();
+          dataPoints.requests.shift();
+          dataPoints.responses.shift();
+          dataPoints.errors.shift();
+        }
+        chart.update();
+      }
+
+      async function fetchMetrics() {
+        const interval = Number(intervalSelect.value || 20000);
+        try {
+          const snapshot = await AdminUI.adminFetch("/metrics");
+          requestsTotal.textContent = snapshot.requests_total.toLocaleString("fa-IR");
+          responsesTotal.textContent = snapshot.responses_total.toLocaleString("fa-IR");
+          errorsTotal.textContent = snapshot.errors_total.toLocaleString("fa-IR");
+          latencyAvg.textContent = snapshot.request_latency_avg_ms.toLocaleString("fa-IR", {
+            maximumFractionDigits: 2,
+          });
+          lastUpdated.textContent = new Date().toLocaleString("fa-IR");
+          setStatus("اطلاعات با موفقیت به‌روزرسانی شد.");
+          updateChart(snapshot);
+        } catch (error) {
+          setStatus(error.message, true);
+        } finally {
+          scheduleNext(interval);
+        }
+      }
+
+      intervalSelect.addEventListener("change", () => {
+        fetchMetrics();
+      });
+
+      fetchMetrics();
+    });
+  </script>
+{% endblock %}

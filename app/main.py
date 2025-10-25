@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from .admin import router as admin_router
+from .admin_ui import router as admin_ui_router
 from .api import sessions_router
 from .agents.manager import ProviderNotRegisteredError
 from .agents.providers import (
@@ -269,6 +270,7 @@ def create_app() -> FastAPI:
     application.include_router(root_router)
     application.include_router(meta_router)
     application.include_router(admin_router)
+    application.include_router(admin_ui_router)
     application.include_router(sessions_router)
 
     if shutdown_callbacks:

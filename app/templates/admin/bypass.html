@@ -1,0 +1,313 @@
+{% extends "admin/base.html" %}
+
+{% block title %}مدیریت آی‌پی‌های مجاز{% endblock %}
+
+{% block content %}
+  <h2>مدیریت آی‌پی‌های دارای دسترسی ویژه</h2>
+  <p>
+    این صفحه امکان مشاهده، جستجو و به‌روزرسانی فهرست آی‌پی‌هایی را که از محدودیت نرخ عبور داده
+    شده‌اند فراهم می‌کند. ابتدا تنظیمات اتصال را در بالای صفحه انجام دهید و سپس از دکمه «دریافت
+    لیست» استفاده کنید.
+  </p>
+
+  <section class="grid">
+    <article class="card">
+      <h2>فهرست آی‌پی‌ها</h2>
+      <div class="toolbar">
+        <input id="searchInput" type="search" placeholder="جستجو در فهرست" />
+        <div class="toolbar-actions">
+          <button type="button" class="secondary" id="copyBtn">کپی لیست</button>
+          <button type="button" class="secondary" id="exportBtn">دانلود JSON</button>
+          <button type="button" class="primary" id="fetchBtn">دریافت لیست</button>
+        </div>
+      </div>
+      <p class="status-message" id="fetchStatus"></p>
+      <p class="meta" id="countInfo"></p>
+      <ul id="ipList" class="ip-list"></ul>
+    </article>
+
+    <article class="card">
+      <h2>افزودن آی‌پی جدید</h2>
+      <form id="addForm" class="stack-form">
+        <label for="ipInput">آی‌پی مورد نظر</label>
+        <input id="ipInput" type="text" placeholder="مثال: 203.0.113.24" required />
+        <button type="submit" class="primary">افزودن</button>
+      </form>
+      <p class="status-message" id="addStatus"></p>
+    </article>
+
+    <article class="card">
+      <h2>افزودن گروهی</h2>
+      <form id="bulkForm" class="stack-form">
+        <label for="bulkInput">آی‌پی‌ها را خط به خط وارد کنید</label>
+        <textarea
+          id="bulkInput"
+          placeholder="مثال:\n192.0.2.1\n198.51.100.25"
+          rows="6"
+        ></textarea>
+        <button type="submit" class="primary">ارسال آی‌پی‌ها</button>
+      </form>
+      <p class="status-message" id="bulkStatus"></p>
+    </article>
+  </section>
+{% endblock %}
+
+{% block extra_js %}
+  <style>
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .toolbar input[type="search"] {
+      flex: 1;
+      min-width: 200px;
+      padding: 0.65rem 0.9rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.92);
+      font-family: inherit;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .ip-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      max-height: 340px;
+      overflow-y: auto;
+    }
+
+    .ip-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.8rem 1rem;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: #f8fbff;
+    }
+
+    .ip-item span {
+      flex: 1;
+      word-break: break-word;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .ip-item button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.45rem 1rem;
+      background: rgba(239, 68, 68, 0.12);
+      color: #b91c1c;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 600;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-top: 0.5rem;
+    }
+
+    .stack-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+  </style>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const ipListElement = document.getElementById("ipList");
+      const fetchBtn = document.getElementById("fetchBtn");
+      const fetchStatus = document.getElementById("fetchStatus");
+      const countInfo = document.getElementById("countInfo");
+      const searchInput = document.getElementById("searchInput");
+      const copyBtn = document.getElementById("copyBtn");
+      const exportBtn = document.getElementById("exportBtn");
+      const addForm = document.getElementById("addForm");
+      const addStatus = document.getElementById("addStatus");
+      const bulkForm = document.getElementById("bulkForm");
+      const bulkStatus = document.getElementById("bulkStatus");
+      const bulkInput = document.getElementById("bulkInput");
+
+      let cachedIps = [];
+
+      function setStatus(element, message, isError = false) {
+        element.textContent = message;
+        element.classList.toggle("error", Boolean(isError));
+      }
+
+      function renderList(filterValue = "") {
+        ipListElement.innerHTML = "";
+        const normalised = filterValue.trim().toLowerCase();
+        const items = normalised
+          ? cachedIps.filter((ip) => ip.toLowerCase().includes(normalised))
+          : [...cachedIps];
+
+        if (!items.length) {
+          const empty = document.createElement("li");
+          empty.textContent = normalised ? "آی‌پی مطابق با جستجو یافت نشد." : "آی‌پی ثبت نشده است.";
+          empty.style.textAlign = "center";
+          empty.style.opacity = "0.7";
+          ipListElement.appendChild(empty);
+          countInfo.textContent = "";
+          return;
+        }
+
+        items.forEach((ip) => {
+          const item = document.createElement("li");
+          item.className = "ip-item";
+          const label = document.createElement("span");
+          label.textContent = ip;
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.textContent = "حذف";
+          removeBtn.addEventListener("click", () => removeIp(ip));
+          item.append(label, removeBtn);
+          ipListElement.appendChild(item);
+        });
+
+        countInfo.textContent = normalised
+          ? `نمایش ${items.length} مورد از ${cachedIps.length}`
+          : `تعداد کل آی‌پی‌ها: ${cachedIps.length}`;
+      }
+
+      async function refreshList() {
+        setStatus(fetchStatus, "در حال دریافت...");
+        try {
+          const ips = await AdminUI.adminFetch("/admin/bypass");
+          cachedIps = Array.isArray(ips) ? ips : [];
+          setStatus(fetchStatus, "لیست با موفقیت دریافت شد.");
+          renderList(searchInput.value || "");
+        } catch (error) {
+          cachedIps = [];
+          ipListElement.innerHTML = "";
+          countInfo.textContent = "";
+          setStatus(fetchStatus, error.message, true);
+        }
+      }
+
+      async function removeIp(ip) {
+        setStatus(fetchStatus, `در حال حذف ${ip}...`);
+        try {
+          await AdminUI.adminFetch(`/admin/bypass/${encodeURIComponent(ip)}`, {
+            method: "DELETE",
+          });
+          cachedIps = cachedIps.filter((item) => item !== ip);
+          setStatus(fetchStatus, "آی‌پی حذف شد.");
+          renderList(searchInput.value || "");
+        } catch (error) {
+          setStatus(fetchStatus, error.message, true);
+        }
+      }
+
+      addForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const input = document.getElementById("ipInput");
+        const ip = input.value.trim();
+        if (!ip) {
+          setStatus(addStatus, "لطفاً آی‌پی را وارد کنید.", true);
+          return;
+        }
+        setStatus(addStatus, "در حال ثبت آی‌پی...");
+        try {
+          const response = await AdminUI.adminFetch("/admin/bypass", {
+            method: "POST",
+            body: JSON.stringify({ ip }),
+          });
+          input.value = "";
+          const normalised = response && response.ip ? response.ip : ip;
+          cachedIps.push(normalised);
+          cachedIps = Array.from(new Set(cachedIps));
+          setStatus(addStatus, "آی‌پی با موفقیت افزوده شد.");
+          renderList(searchInput.value || "");
+        } catch (error) {
+          setStatus(addStatus, error.message, true);
+        }
+      });
+
+      bulkForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const lines = bulkInput.value
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+        if (!lines.length) {
+          setStatus(bulkStatus, "هیچ آی‌پی‌ای برای افزودن وجود ندارد.", true);
+          return;
+        }
+        setStatus(bulkStatus, "در حال ارسال آی‌پی‌ها...");
+        const unique = Array.from(new Set(lines));
+        for (const ip of unique) {
+          try {
+            const response = await AdminUI.adminFetch("/admin/bypass", {
+              method: "POST",
+              body: JSON.stringify({ ip }),
+            });
+            const normalised = response && response.ip ? response.ip : ip;
+            cachedIps.push(normalised);
+          } catch (error) {
+            console.warn("bulk add failed", ip, error);
+          }
+        }
+        cachedIps = Array.from(new Set(cachedIps));
+        setStatus(bulkStatus, "فرآیند افزودن به پایان رسید.");
+        bulkInput.value = "";
+        renderList(searchInput.value || "");
+      });
+
+      searchInput.addEventListener("input", (event) => {
+        renderList(event.target.value || "");
+      });
+
+      copyBtn.addEventListener("click", async () => {
+        if (!cachedIps.length) {
+          setStatus(fetchStatus, "آی‌پی‌ای برای کپی وجود ندارد.", true);
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(cachedIps.join("\n"));
+          setStatus(fetchStatus, "لیست در کلیپ‌بورد ذخیره شد.");
+        } catch (error) {
+          setStatus(fetchStatus, "امکان دسترسی به کلیپ‌بورد وجود ندارد.", true);
+        }
+      });
+
+      exportBtn.addEventListener("click", () => {
+        if (!cachedIps.length) {
+          setStatus(fetchStatus, "آی‌پی‌ای برای دانلود وجود ندارد.", true);
+          return;
+        }
+        const blob = new Blob([JSON.stringify(cachedIps, null, 2)], {
+          type: "application/json;charset=utf-8",
+        });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `bypass-ips-${Date.now()}.json`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+        setStatus(fetchStatus, "فایل JSON آماده شد.");
+      });
+
+      fetchBtn.addEventListener("click", refreshList);
+      refreshList();
+    });
+  </script>
+{% endblock %}

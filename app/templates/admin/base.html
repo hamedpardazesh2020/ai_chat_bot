@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}پنل مدیریت سرویس{% endblock %}</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/vazir-font@30.1.0/dist/font-face.css"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Vazir", "Vazirmatn", "IRANSans", "Segoe UI", sans-serif;
+        --bg-gradient: linear-gradient(135deg, #eef2ff 0%, #f8fafc 40%, #fdf2f8 100%);
+        --surface: rgba(255, 255, 255, 0.92);
+        --surface-strong: #ffffff;
+        --surface-subtle: rgba(15, 23, 42, 0.05);
+        --border: rgba(148, 163, 184, 0.4);
+        --primary: #2563eb;
+        --primary-dark: #1d4ed8;
+        --accent: #f97316;
+        --text: #0f172a;
+        --muted: #475569;
+        --shadow: 0 24px 50px rgba(15, 23, 42, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg-gradient);
+        color: var(--text);
+        display: flex;
+        flex-direction: column;
+      }
+
+      header.topbar {
+        backdrop-filter: blur(12px);
+        background: rgba(255, 255, 255, 0.88);
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        padding: 1.2rem clamp(1.5rem, 5vw, 3rem);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .brand {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+
+      .brand h1 {
+        font-size: clamp(1.4rem, 2vw, 1.9rem);
+        margin: 0;
+        color: var(--primary-dark);
+      }
+
+      .brand p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      nav {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      nav a {
+        text-decoration: none;
+        color: var(--muted);
+        font-weight: 600;
+        padding: 0.55rem 1.2rem;
+        border-radius: 12px;
+        border: 1px solid transparent;
+        transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+      }
+
+      nav a:hover {
+        background: rgba(37, 99, 235, 0.08);
+        color: var(--primary-dark);
+      }
+
+      nav a.active {
+        color: var(--primary-dark);
+        border-color: rgba(37, 99, 235, 0.25);
+        background: rgba(37, 99, 235, 0.15);
+      }
+
+      .token-form {
+        display: flex;
+        align-items: flex-end;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+
+      .token-form label {
+        font-size: 0.95rem;
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .token-controls {
+        display: flex;
+        align-items: stretch;
+        gap: 0.5rem;
+      }
+
+      .token-controls input {
+        padding: 0.6rem 0.9rem;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--surface-subtle);
+        min-width: clamp(180px, 20vw, 260px);
+        font-family: inherit;
+        font-size: 0.95rem;
+      }
+
+      .token-controls button,
+      .token-form button[type="submit"] {
+        border: none;
+        border-radius: 12px;
+        padding: 0.6rem 1.1rem;
+        background: rgba(37, 99, 235, 0.12);
+        color: var(--primary-dark);
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.15s ease;
+      }
+
+      .token-controls button:hover,
+      .token-form button[type="submit"]:hover {
+        background: rgba(37, 99, 235, 0.2);
+      }
+
+      .token-controls button:active,
+      .token-form button[type="submit"]:active {
+        transform: translateY(1px);
+      }
+
+      #tokenStatus {
+        width: 100%;
+        margin: 0.25rem 0 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      main.content {
+        flex: 1;
+        width: min(1200px, 100%);
+        margin: 2.5rem auto;
+        padding: clamp(1.5rem, 5vw, 3rem);
+        background: var(--surface);
+        border-radius: 28px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+      }
+
+      footer {
+        margin: 1.5rem auto 2.5rem;
+        text-align: center;
+        color: rgba(15, 23, 42, 0.55);
+        font-size: 0.9rem;
+      }
+
+      .grid {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      }
+
+      .card {
+        background: var(--surface-strong);
+        border-radius: 20px;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        padding: 1.75rem;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 22px 52px rgba(15, 23, 42, 0.12);
+      }
+
+      .card h2 {
+        margin-top: 0;
+        font-size: 1.4rem;
+        color: var(--primary);
+      }
+
+      .card p {
+        color: var(--muted);
+        line-height: 1.8;
+        font-size: 0.98rem;
+      }
+
+      .status-message {
+        margin-top: 0.75rem;
+        font-size: 0.95rem;
+        color: var(--muted);
+      }
+
+      .status-message.error {
+        color: #dc2626;
+      }
+
+      @media (max-width: 860px) {
+        header.topbar {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        nav {
+          justify-content: flex-start;
+        }
+
+        .token-controls input {
+          min-width: 0;
+          width: min(100%, 240px);
+        }
+      }
+
+      @media (max-width: 600px) {
+        main.content {
+          margin: 1.5rem auto;
+          padding: 1.5rem;
+        }
+
+        nav {
+          gap: 0.5rem;
+        }
+
+        nav a {
+          padding-inline: 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body data-page="{{ page_id | default('home') }}">
+    <header class="topbar">
+      <div class="brand">
+        <h1>پنل مدیریت سرویس چت</h1>
+        <p>دسترسی سریع به ابزارهای نظارتی و عملیاتی سرویس</p>
+      </div>
+      <nav>
+        <a href="{{ request.url_for('admin-ui-home') }}" class="{% if page_id == 'home' %}active{% endif %}">خانه</a>
+        <a href="{{ request.url_for('admin-ui-sessions') }}" class="{% if page_id == 'sessions' %}active{% endif %}">سشن‌ها و گفتگوها</a>
+        <a href="{{ request.url_for('admin-ui-metrics') }}" class="{% if page_id == 'metrics' %}active{% endif %}">متریک‌ها</a>
+        <a href="{{ request.url_for('admin-ui-runtime') }}" class="{% if page_id == 'runtime' %}active{% endif %}">اطلاعات سرویس</a>
+        <a href="{{ request.url_for('admin-ui-bypass') }}" class="{% if page_id == 'bypass' %}active{% endif %}">مدیریت آی‌پی‌ها</a>
+      </nav>
+      <form class="token-form" id="tokenForm">
+        <label for="adminTokenInput">توکن ادمین</label>
+        <div class="token-controls">
+          <input id="adminTokenInput" type="password" autocomplete="off" placeholder="توکن را وارد کنید" />
+          <button type="button" id="toggleToken">نمایش</button>
+          <button type="submit">ذخیره</button>
+        </div>
+        <p id="tokenStatus"></p>
+      </form>
+    </header>
+
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+      این رابط به‌صورت یکپارچه با API مدیریت کار می‌کند و برای کاربری روزمره در فضای
+      روشن طراحی شده است.
+    </footer>
+
+    <script>
+      (function () {
+        const STORAGE_KEYS = {
+          token: "admin-ui-token",
+        };
+
+        const tokenInput = document.getElementById("adminTokenInput");
+        const toggleButton = document.getElementById("toggleToken");
+        const tokenForm = document.getElementById("tokenForm");
+        const tokenStatus = document.getElementById("tokenStatus");
+
+        function withLocalStorage(callback) {
+          try {
+            callback();
+          } catch (error) {
+            console.warn("localStorage unavailable", error);
+          }
+        }
+
+        function loadToken() {
+          withLocalStorage(() => {
+            const stored = localStorage.getItem(STORAGE_KEYS.token);
+            if (stored) {
+              tokenInput.value = stored;
+              tokenStatus.textContent = "توکن از تنظیمات ذخیره‌شده بارگذاری شد.";
+            } else {
+              tokenStatus.textContent = "توکن برای درخواست‌های محافظت‌شده الزامی است.";
+            }
+          });
+        }
+
+        function persistToken(value) {
+          withLocalStorage(() => {
+            if (value) {
+              localStorage.setItem(STORAGE_KEYS.token, value);
+            } else {
+              localStorage.removeItem(STORAGE_KEYS.token);
+            }
+          });
+        }
+
+        function showStatus(message, isError = false) {
+          if (!tokenStatus) return;
+          tokenStatus.textContent = message;
+          tokenStatus.classList.toggle("error", Boolean(isError));
+        }
+
+        loadToken();
+
+        if (toggleButton) {
+          toggleButton.addEventListener("click", () => {
+            const isPassword = tokenInput.type === "password";
+            tokenInput.type = isPassword ? "text" : "password";
+            toggleButton.textContent = isPassword ? "مخفی کردن" : "نمایش";
+          });
+        }
+
+        if (tokenForm) {
+          tokenForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const trimmed = tokenInput.value.trim();
+            persistToken(trimmed);
+            showStatus(trimmed ? "توکن ذخیره شد و در درخواست‌ها استفاده می‌شود." : "توکن پاک شد.");
+          });
+        }
+
+        function getToken() {
+          return tokenInput.value.trim();
+        }
+
+        async function adminFetch(path, options = {}) {
+          const normalisedPath = path.startsWith("/") ? path : `/${path}`;
+          const headers = new Headers(options.headers || {});
+          const token = getToken();
+          if (token) {
+            headers.set("X-Admin-Token", token);
+          }
+          if (!headers.has("Content-Type") && options.method && options.method !== "GET") {
+            headers.set("Content-Type", "application/json");
+          }
+          const response = await fetch(normalisedPath, {
+            ...options,
+            headers,
+          });
+          if (!response.ok) {
+            let detail = `${response.status} ${response.statusText}`;
+            try {
+              const data = await response.json();
+              if (data && data.message) {
+                detail = data.message;
+              }
+            } catch (error) {
+              /* non JSON response */
+            }
+            throw new Error(detail);
+          }
+          if (response.status === 204) {
+            return null;
+          }
+          const text = await response.text();
+          return text ? JSON.parse(text) : null;
+        }
+
+        window.AdminUI = {
+          adminFetch,
+          getToken,
+          showStatus,
+        };
+      })();
+    </script>
+
+    {% block extra_js %}{% endblock %}
+  </body>
+</html>

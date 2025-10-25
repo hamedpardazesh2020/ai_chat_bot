@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional, Protocol, Sequence, TYPE_CHECKING
+from typing import Any, Optional, Protocol, Sequence, TYPE_CHECKING
 from uuid import UUID
 
 try:  # pragma: no cover - optional dependency
@@ -31,6 +32,29 @@ if TYPE_CHECKING:  # pragma: no cover - imported only for typing
     from .sessions import Session
 
 
+@dataclass(slots=True)
+class StoredSession:
+    """Serialised session information returned from persistent history."""
+
+    id: UUID
+    provider: Optional[str]
+    fallback_provider: Optional[str]
+    memory_limit: Optional[int]
+    created_at: datetime
+    metadata: dict[str, Any]
+
+
+@dataclass(slots=True)
+class StoredMessage:
+    """Serialised chat message returned from persistent history."""
+
+    session_id: UUID
+    role: str
+    content: str
+    created_at: datetime
+    stored_at: Optional[datetime]
+
+
 class HistoryStore(Protocol):
     """Protocol implemented by transcript persistence backends."""
 
@@ -47,6 +71,40 @@ class HistoryStore(Protocol):
 
     async def aclose(self) -> None:
         """Release any open connections held by the backend."""
+
+    async def list_sessions(
+        self,
+        *,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Sequence[StoredSession]:
+        """Return a paginated collection of stored sessions."""
+
+    async def get_session_messages(
+        self,
+        session_id: UUID,
+        *,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Sequence[StoredMessage]:
+        """Return stored messages for the given session in chronological order."""
+
+
+def _parse_datetime(value: Any) -> datetime:
+    """Coerce raw datetime payloads into timezone-aware ``datetime`` objects."""
+
+    if isinstance(value, datetime):
+        dt = value
+    elif isinstance(value, str):
+        dt = datetime.fromisoformat(value)
+    elif value is None:
+        dt = datetime.now(timezone.utc)
+    else:  # pragma: no cover - defensive fallback
+        raise TypeError(f"Unsupported datetime value: {value!r}")
+
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 class NoOpHistoryStore:
@@ -65,6 +123,16 @@ class NoOpHistoryStore:
 
     async def aclose(self) -> None:  # pragma: no cover - trivial
         return
+
+    async def list_sessions(
+        self, *, limit: int = 50, offset: int = 0
+    ) -> Sequence[StoredSession]:  # pragma: no cover - trivial
+        return []
+
+    async def get_session_messages(
+        self, session_id: UUID, *, limit: int = 50, offset: int = 0
+    ) -> Sequence[StoredMessage]:  # pragma: no cover - trivial
+        return []
 
 
 class RedisHistoryStore:
@@ -132,6 +200,77 @@ class RedisHistoryStore:
 
     def _session_index_key(self) -> str:
         return f"{self._namespace}:sessions"
+
+    async def list_sessions(
+        self, *, limit: int = 50, offset: int = 0
+    ) -> Sequence[StoredSession]:
+        session_ids = list(await self._client.smembers(self._session_index_key()))
+        if not session_ids:
+            return []
+
+        async def _load(raw_id: str) -> StoredSession | None:
+            try:
+                session_uuid = UUID(raw_id)
+            except ValueError:  # pragma: no cover - defensive fallback
+                return None
+
+            payload = await self._client.hgetall(self._session_key(session_uuid))
+            if not payload:
+                return None
+
+            metadata_raw = payload.get("metadata") or "{}"
+            try:
+                metadata = json.loads(metadata_raw)
+            except json.JSONDecodeError:  # pragma: no cover - defensive fallback
+                metadata = {}
+
+            memory_raw = payload.get("memory_limit") or ""
+            memory_limit = int(memory_raw) if memory_raw else None
+            created_raw = payload.get("created_at") or datetime.now(timezone.utc).isoformat()
+            created_at = _parse_datetime(created_raw)
+
+            return StoredSession(
+                id=session_uuid,
+                provider=payload.get("provider") or None,
+                fallback_provider=payload.get("fallback_provider") or None,
+                memory_limit=memory_limit,
+                created_at=created_at,
+                metadata=metadata,
+            )
+
+        results = [item for item in await asyncio.gather(*(_load(raw_id) for raw_id in session_ids)) if item]
+        results.sort(key=lambda session: session.created_at, reverse=True)
+
+        if offset:
+            results = results[offset:]
+        if limit is not None:
+            results = results[:limit]
+        return results
+
+    async def get_session_messages(
+        self, session_id: UUID, *, limit: int = 50, offset: int = 0
+    ) -> Sequence[StoredMessage]:
+        stop = -1 if limit is None else offset + max(limit - 1, 0)
+        encoded = await self._client.lrange(self._messages_key(session_id), offset, stop)
+        messages: list[StoredMessage] = []
+        for item in encoded:
+            try:
+                payload = json.loads(item)
+            except json.JSONDecodeError:  # pragma: no cover - defensive fallback
+                continue
+
+            created_raw = payload.get("created_at") or datetime.now(timezone.utc).isoformat()
+            stored_raw = payload.get("stored_at")
+            messages.append(
+                StoredMessage(
+                    session_id=session_id,
+                    role=payload.get("role", "unknown"),
+                    content=payload.get("content", ""),
+                    created_at=_parse_datetime(created_raw),
+                    stored_at=_parse_datetime(stored_raw) if stored_raw else None,
+                )
+            )
+        return messages
 
     @classmethod
     def from_url(
@@ -306,6 +445,82 @@ class MySQLHistoryStore:
             await connection.commit()
         self._initialised = True
 
+    async def list_sessions(
+        self, *, limit: int = 50, offset: int = 0
+    ) -> Sequence[StoredSession]:
+        pool = await self._get_pool()
+        async with pool.acquire() as connection:
+            async with connection.cursor() as cursor:
+                await cursor.execute(
+                    f"""
+                    SELECT id, provider, fallback_provider, memory_limit, created_at, metadata
+                    FROM {self._session_table}
+                    WHERE namespace = %s
+                    ORDER BY created_at DESC
+                    LIMIT %s OFFSET %s
+                    """,
+                    (self._namespace, limit, offset),
+                )
+                rows = await cursor.fetchall()
+
+        sessions: list[StoredSession] = []
+        for row in rows:
+            session_id, provider, fallback, memory_limit, created_at, metadata_raw = row
+            if isinstance(metadata_raw, (bytes, bytearray)):
+                metadata_raw = metadata_raw.decode("utf-8")
+            if isinstance(metadata_raw, str):
+                try:
+                    metadata = json.loads(metadata_raw)
+                except json.JSONDecodeError:  # pragma: no cover - defensive fallback
+                    metadata = {}
+            elif isinstance(metadata_raw, dict):
+                metadata = metadata_raw
+            else:
+                metadata = {}
+
+            sessions.append(
+                StoredSession(
+                    id=UUID(session_id),
+                    provider=provider,
+                    fallback_provider=fallback,
+                    memory_limit=memory_limit,
+                    created_at=_parse_datetime(created_at),
+                    metadata=metadata,
+                )
+            )
+        return sessions
+
+    async def get_session_messages(
+        self, session_id: UUID, *, limit: int = 50, offset: int = 0
+    ) -> Sequence[StoredMessage]:
+        pool = await self._get_pool()
+        async with pool.acquire() as connection:
+            async with connection.cursor() as cursor:
+                await cursor.execute(
+                    f"""
+                    SELECT role, content, created_at, stored_at
+                    FROM {self._message_table}
+                    WHERE namespace = %s AND session_id = %s
+                    ORDER BY created_at ASC
+                    LIMIT %s OFFSET %s
+                    """,
+                    (self._namespace, str(session_id), limit, offset),
+                )
+                rows = await cursor.fetchall()
+
+        messages: list[StoredMessage] = []
+        for role, content, created_at, stored_at in rows:
+            messages.append(
+                StoredMessage(
+                    session_id=session_id,
+                    role=role,
+                    content=content,
+                    created_at=_parse_datetime(created_at),
+                    stored_at=_parse_datetime(stored_at) if stored_at else None,
+                )
+            )
+        return messages
+
 
 class MongoHistoryStore:
     """MongoDB-backed history store implemented with ``motor``."""
@@ -393,6 +608,73 @@ class MongoHistoryStore:
             )
             self._initialised = True
 
+    async def list_sessions(
+        self, *, limit: int = 50, offset: int = 0
+    ) -> Sequence[StoredSession]:
+        await self._ensure_indexes()
+        cursor = (
+            self._sessions.find({"namespace": self._namespace})
+            .sort("created_at", -1)
+            .skip(offset)
+            .limit(limit)
+        )
+        documents = await cursor.to_list(length=limit)
+
+        sessions: list[StoredSession] = []
+        for document in documents:
+            session_id = document.get("id")
+            if not session_id:
+                continue
+            try:
+                session_uuid = UUID(session_id)
+            except ValueError:  # pragma: no cover - defensive fallback
+                continue
+
+            metadata = document.get("metadata") or {}
+            if not isinstance(metadata, dict):
+                metadata = {}
+
+            sessions.append(
+                StoredSession(
+                    id=session_uuid,
+                    provider=document.get("provider"),
+                    fallback_provider=document.get("fallback_provider"),
+                    memory_limit=document.get("memory_limit"),
+                    created_at=_parse_datetime(document.get("created_at")),
+                    metadata=metadata,
+                )
+            )
+        return sessions
+
+    async def get_session_messages(
+        self, session_id: UUID, *, limit: int = 50, offset: int = 0
+    ) -> Sequence[StoredMessage]:
+        await self._ensure_indexes()
+        cursor = (
+            self._messages.find(
+                {"namespace": self._namespace, "session_id": str(session_id)}
+            )
+            .sort("created_at", 1)
+            .skip(offset)
+            .limit(limit)
+        )
+        documents = await cursor.to_list(length=limit)
+
+        messages: list[StoredMessage] = []
+        for document in documents:
+            messages.append(
+                StoredMessage(
+                    session_id=session_id,
+                    role=document.get("role", "unknown"),
+                    content=document.get("content", ""),
+                    created_at=_parse_datetime(document.get("created_at")),
+                    stored_at=_parse_datetime(document.get("stored_at"))
+                    if document.get("stored_at")
+                    else None,
+                )
+            )
+        return messages
+
 
 def history_from_settings(settings: "Settings") -> HistoryStore:
     """Create a history store instance based on configuration settings."""
@@ -436,5 +718,7 @@ __all__ = [
     "MySQLHistoryStore",
     "NoOpHistoryStore",
     "RedisHistoryStore",
+    "StoredMessage",
+    "StoredSession",
     "history_from_settings",
 ]

@@ -1,0 +1,61 @@
+{% extends "admin/base.html" %}
+
+{% block title %}نمای کلی پنل مدیریت{% endblock %}
+
+{% block content %}
+  <section class="grid">
+    <article class="card">
+      <h2>سشن‌ها و گفتگوها</h2>
+      <p>
+        مشاهده‌ی سشن‌های فعال و آرشیوشده به همراه جزئیات پیام‌ها برای پایش دقیق عملیات. این بخش
+        برای تیم پشتیبانی فراهم شده تا بتوانند وضعیت ذخیره‌سازی را نیز بررسی کنند.
+      </p>
+      <a class="nav-button" href="{{ request.url_for('admin-ui-sessions') }}">ورود به مدیریت سشن</a>
+    </article>
+    <article class="card">
+      <h2>متریک‌های زنده</h2>
+      <p>
+        تصویری لحظه‌ای از درخواست‌ها، پاسخ‌ها و میانگین زمان پردازش را مشاهده کنید. نمودارها
+        به‌صورت زنده به‌روزرسانی شده و به تشخیص سریع مشکلات کمک می‌کنند.
+      </p>
+      <a class="nav-button" href="{{ request.url_for('admin-ui-metrics') }}">مشاهده متریک‌ها</a>
+    </article>
+    <article class="card">
+      <h2>اطلاعات سرویس</h2>
+      <p>
+        وضعیت فعلی ارائه‌دهندگان، تنظیمات حافظه و جزئیات فعال‌سازی MCP در این قسمت قابل مشاهده است.
+        برای عیب‌یابی سریع بسیار کاربردی است.
+      </p>
+      <a class="nav-button" href="{{ request.url_for('admin-ui-runtime') }}">وضعیت سرویس</a>
+    </article>
+    <article class="card">
+      <h2>مدیریت آی‌پی‌های مجاز</h2>
+      <p>
+        فهرست آی‌پی‌های دارای دسترسی ویژه را به‌سادگی مدیریت کنید، آی‌پی جدید اضافه کرده یا موارد
+        قدیمی را حذف کنید. امکان برون‌بری و جستجوی سریع نیز فراهم است.
+      </p>
+      <a class="nav-button" href="{{ request.url_for('admin-ui-bypass') }}">تنظیم آی‌پی‌ها</a>
+    </article>
+  </section>
+{% endblock %}
+
+{% block extra_js %}
+  <style>
+    .nav-button {
+      display: inline-flex;
+      margin-top: 1.25rem;
+      padding: 0.7rem 1.5rem;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary), #3b82f6);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      transition: transform 0.15s ease, box-shadow 0.2s ease;
+    }
+
+    .nav-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 32px rgba(37, 99, 235, 0.35);
+    }
+  </style>
+{% endblock %}
