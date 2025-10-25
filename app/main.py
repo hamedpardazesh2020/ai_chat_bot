@@ -184,10 +184,12 @@ def create_app() -> FastAPI:
         request.state.request_id = request_id
         start_time = perf_counter()
         client_host = request.client.host if request.client else None
+        path = request.url.path
+        log_request = not path.startswith("/metrics")
         context = {
             "event": "request",
             "method": request.method,
-            "path": request.url.path,
+            "path": path,
             "client_ip": client_host,
             "request_id": request_id,
         }
@@ -195,22 +197,24 @@ def create_app() -> FastAPI:
             response = await call_next(request)
         except Exception:
             duration_ms = (perf_counter() - start_time) * 1000
-            request_logger.exception(
-                "request_failed",
-                extra={**context, "duration_ms": round(duration_ms, 3)},
-            )
+            if log_request:
+                request_logger.exception(
+                    "request_failed",
+                    extra={**context, "duration_ms": round(duration_ms, 3)},
+                )
             raise
 
         duration_ms = (perf_counter() - start_time) * 1000
         response.headers.setdefault("X-Request-ID", request_id)
-        request_logger.info(
-            "request_completed",
-            extra={
-                **context,
-                "status_code": response.status_code,
-                "duration_ms": round(duration_ms, 3),
-            },
-        )
+        if log_request:
+            request_logger.info(
+                "request_completed",
+                extra={
+                    **context,
+                    "status_code": response.status_code,
+                    "duration_ms": round(duration_ms, 3),
+                },
+            )
         return response
 
     if settings.metrics_enabled:
