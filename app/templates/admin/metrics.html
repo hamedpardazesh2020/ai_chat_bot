@@ -19,8 +19,8 @@
           <option value="60000">۶۰ ثانیه</option>
         </select>
       </div>
-      <button type="button" id="fullscreenToggle" class="zoom-button" aria-pressed="false">
-        نمایش تمام‌صفحه
+      <button type="button" id="chartExpandToggle" class="zoom-button" aria-pressed="false">
+        بزرگ‌نمایی نمودار
       </button>
     </div>
   </section>
@@ -164,10 +164,17 @@
       box-shadow: inset 0 3px 18px rgba(15, 23, 42, 0.06);
       position: relative;
       min-height: 420px;
+      transition: min-height 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
     }
 
     .chart-wrapper canvas {
       height: 100% !important;
+    }
+
+    .chart-wrapper.chart-wrapper--expanded {
+      min-height: min(80vh, 900px);
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16), inset 0 3px 18px rgba(15, 23, 42, 0.06);
+      transform: translateY(-4px);
     }
 
     .status-message {
@@ -185,7 +192,8 @@
       const intervalSelect = document.getElementById("intervalSelect");
       const statusMessage = document.getElementById("metricsStatus");
       const ctx = document.getElementById("metricsChart");
-      const fullscreenToggle = document.getElementById("fullscreenToggle");
+      const expandToggle = document.getElementById("chartExpandToggle");
+      const chartWrapper = document.querySelector(".chart-wrapper");
 
       statusMessage.hidden = true;
 
@@ -261,21 +269,6 @@
         statusMessage.hidden = !message;
       }
 
-      function toggleFullscreen() {
-        const isActive = document.fullscreenElement != null;
-        if (isActive) {
-          document.exitFullscreen().catch(() => {});
-        } else {
-          document.documentElement.requestFullscreen().catch(() => {});
-        }
-      }
-
-      function updateFullscreenState() {
-        const isActive = document.fullscreenElement != null;
-        fullscreenToggle.setAttribute("aria-pressed", String(isActive));
-        fullscreenToggle.textContent = isActive ? "خروج از تمام‌صفحه" : "نمایش تمام‌صفحه";
-      }
-
       function scheduleNext(interval) {
         if (timer) {
           clearTimeout(timer);
@@ -326,9 +319,12 @@
         fetchMetrics();
       });
 
-      fullscreenToggle.addEventListener("click", toggleFullscreen);
-      document.addEventListener("fullscreenchange", updateFullscreenState);
-      updateFullscreenState();
+      expandToggle.addEventListener("click", () => {
+        const isExpanded = chartWrapper.classList.toggle("chart-wrapper--expanded");
+        expandToggle.setAttribute("aria-pressed", String(isExpanded));
+        expandToggle.textContent = isExpanded ? "کوچک‌نمایی نمودار" : "بزرگ‌نمایی نمودار";
+        chart.resize();
+      });
 
       fetchMetrics();
     });
