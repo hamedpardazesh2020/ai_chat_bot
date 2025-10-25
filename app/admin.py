@@ -1,14 +1,26 @@
 """Administrative endpoints for managing runtime controls."""
 from __future__ import annotations
 
+from datetime import datetime
+from typing import Any
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, Header, Response, status
 from pydantic import BaseModel, Field
 
 from .config import get_settings
-from .dependencies import get_rate_limit_bypass_store
+from .dependencies import (
+    get_chat_memory,
+    get_history_store,
+    get_rate_limit_bypass_store,
+    get_session_store,
+)
 from .errors import APIError
+from .history_store import HistoryStore
+from .memory import ChatMemory
 from .rate_limiter import RateLimitBypassStore
 from .runtime import build_runtime_report
+from .sessions import InMemorySessionStore, SessionNotFoundError
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -73,6 +85,64 @@ class RuntimeDiagnostics(BaseModel):
     memory: RuntimeMemoryInfo
 
 
+class ActiveSessionSummary(BaseModel):
+    """Summary of an in-memory session available through the runtime."""
+
+    id: UUID
+    provider: str | None = None
+    fallback_provider: str | None = None
+    memory_limit: int | None = None
+    created_at: datetime
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ActiveMessage(BaseModel):
+    """Single chat message from the volatile in-memory transcript."""
+
+    role: str
+    content: str
+    created_at: datetime
+
+
+class HistorySessionSummary(BaseModel):
+    """Session metadata retrieved from the configured history store."""
+
+    id: UUID
+    provider: str | None = None
+    fallback_provider: str | None = None
+    memory_limit: int | None = None
+    created_at: datetime
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class HistorySessionsResponse(BaseModel):
+    """Paginated representation of stored chat sessions."""
+
+    sessions: list[HistorySessionSummary]
+    limit: int
+    offset: int
+    count: int
+
+
+class HistoryMessagePayload(BaseModel):
+    """Persisted chat message associated with a stored session."""
+
+    role: str
+    content: str
+    created_at: datetime
+    stored_at: datetime | None = None
+
+
+class HistoryMessagesResponse(BaseModel):
+    """Paginated collection of stored chat messages."""
+
+    session_id: UUID
+    messages: list[HistoryMessagePayload]
+    limit: int
+    offset: int
+    count: int
+
+
 async def require_admin_token(
     token: str | None = Header(default=None, alias="X-Admin-Token"),
 ) -> str:
@@ -103,6 +173,30 @@ async def require_admin_token(
         )
 
     return token
+
+
+def _validate_pagination(limit: int, offset: int) -> tuple[int, int]:
+    """Sanitise pagination parameters and raise API errors when invalid."""
+
+    if limit < 1:
+        raise APIError(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="invalid_limit",
+            message="Limit must be at least 1.",
+        )
+    if limit > 200:
+        raise APIError(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="invalid_limit",
+            message="Limit cannot exceed 200 records per request.",
+        )
+    if offset < 0:
+        raise APIError(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="invalid_offset",
+            message="Offset cannot be negative.",
+        )
+    return limit, offset
 
 
 @router.get(
@@ -188,6 +282,130 @@ async def runtime_diagnostics(_: str = Depends(require_admin_token)) -> RuntimeD
 
     report = build_runtime_report()
     return RuntimeDiagnostics(**report)
+
+
+@router.get(
+    "/sessions",
+    response_model=list[ActiveSessionSummary],
+    summary="List active chat sessions",
+    response_description="Active sessions currently stored in memory.",
+)
+async def list_active_sessions(
+    store: InMemorySessionStore = Depends(get_session_store),
+    _: str = Depends(require_admin_token),
+) -> list[ActiveSessionSummary]:
+    """Return the currently active sessions tracked by the runtime."""
+
+    sessions = await store.list_sessions()
+    return [
+        ActiveSessionSummary(
+            id=session.id,
+            provider=session.provider,
+            fallback_provider=session.fallback_provider,
+            memory_limit=session.memory_limit,
+            created_at=session.created_at,
+            metadata=dict(session.metadata),
+        )
+        for session in sessions
+    ]
+
+
+@router.get(
+    "/sessions/{session_id}/messages",
+    response_model=list[ActiveMessage],
+    summary="Active session transcript",
+    response_description="Messages currently buffered in the in-memory chat history.",
+)
+async def get_active_session_messages(
+    session_id: UUID,
+    store: InMemorySessionStore = Depends(get_session_store),
+    memory: ChatMemory = Depends(get_chat_memory),
+    _: str = Depends(require_admin_token),
+) -> list[ActiveMessage]:
+    """Return the volatile chat transcript for the specified session."""
+
+    try:
+        await store.get_session(session_id)
+    except SessionNotFoundError as exc:
+        raise APIError(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="session_not_found",
+            message=str(exc),
+        ) from exc
+
+    history = await memory.get(session_id)
+    return [
+        ActiveMessage(role=message.role, content=message.content, created_at=message.created_at)
+        for message in history
+    ]
+
+
+@router.get(
+    "/history/sessions",
+    response_model=HistorySessionsResponse,
+    summary="List stored chat sessions",
+    response_description="Sessions persisted by the configured history backend.",
+)
+async def list_history_sessions(
+    limit: int = 50,
+    offset: int = 0,
+    history_store: HistoryStore = Depends(get_history_store),
+    _: str = Depends(require_admin_token),
+) -> HistorySessionsResponse:
+    """Return a paginated collection of persisted chat sessions."""
+
+    limit, offset = _validate_pagination(limit, offset)
+    sessions = await history_store.list_sessions(limit=limit, offset=offset)
+    return HistorySessionsResponse(
+        sessions=[
+            HistorySessionSummary(
+                id=session.id,
+                provider=session.provider,
+                fallback_provider=session.fallback_provider,
+                memory_limit=session.memory_limit,
+                created_at=session.created_at,
+                metadata=dict(session.metadata),
+            )
+            for session in sessions
+        ],
+        limit=limit,
+        offset=offset,
+        count=len(sessions),
+    )
+
+
+@router.get(
+    "/history/sessions/{session_id}/messages",
+    response_model=HistoryMessagesResponse,
+    summary="Stored session transcript",
+    response_description="Messages stored for the specified session in the history backend.",
+)
+async def get_history_session_messages(
+    session_id: UUID,
+    limit: int = 50,
+    offset: int = 0,
+    history_store: HistoryStore = Depends(get_history_store),
+    _: str = Depends(require_admin_token),
+) -> HistoryMessagesResponse:
+    """Return persisted chat messages for a session."""
+
+    limit, offset = _validate_pagination(limit, offset)
+    messages = await history_store.get_session_messages(session_id, limit=limit, offset=offset)
+    return HistoryMessagesResponse(
+        session_id=session_id,
+        messages=[
+            HistoryMessagePayload(
+                role=message.role,
+                content=message.content,
+                created_at=message.created_at,
+                stored_at=message.stored_at,
+            )
+            for message in messages
+        ],
+        limit=limit,
+        offset=offset,
+        count=len(messages),
+    )
 
 
 __all__ = ["require_admin_token", "router"]

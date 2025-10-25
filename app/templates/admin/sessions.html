@@ -1,0 +1,415 @@
+{% extends "admin/base.html" %}
+
+{% block title %}مدیریت سشن‌ها و گفتگوها{% endblock %}
+
+{% block content %}
+  <h2>بررسی سشن‌ها</h2>
+  <p>
+    این صفحه امکان مشاهده‌ی سشن‌های فعال و گفت‌وگوهای ذخیره‌شده را فراهم می‌کند. برای هر سشن،
+    می‌توانید پیام‌های جاری یا آرشیوشده را مشاهده کنید و از وضعیت ذخیره‌سازی مطمئن شوید.
+  </p>
+
+  <section class="sessions-grid">
+    <article class="card">
+      <div class="header">
+        <h2>سشن‌های فعال</h2>
+        <button type="button" class="primary" id="refreshActive">به‌روزرسانی</button>
+      </div>
+      <p class="status-message" id="activeStatus"></p>
+      <ul class="session-list" id="activeSessions"></ul>
+      <div class="transcript" id="activeTranscript">
+        <h3>جزئیات گفتگو</h3>
+        <div class="message-container" id="activeMessages"></div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="header">
+        <h2>گفتگوهای ذخیره‌شده</h2>
+        <div class="history-controls">
+          <button type="button" class="secondary" id="prevHistory">قبلی</button>
+          <span id="historyPage">صفحه ۱</span>
+          <button type="button" class="secondary" id="nextHistory">بعدی</button>
+          <button type="button" class="primary" id="refreshHistory">بارگیری دوباره</button>
+        </div>
+      </div>
+      <p class="status-message" id="historyStatus"></p>
+      <ul class="session-list" id="historySessions"></ul>
+      <div class="transcript" id="historyTranscript">
+        <h3>پیام‌های ذخیره‌شده</h3>
+        <div class="message-container" id="historyMessages"></div>
+      </div>
+    </article>
+  </section>
+{% endblock %}
+
+{% block extra_js %}
+  <style>
+    .sessions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.8rem;
+      margin-top: 2rem;
+    }
+
+    .card .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .card .header h2 {
+      margin: 0;
+      font-size: 1.35rem;
+      color: var(--primary);
+    }
+
+    .primary,
+    .secondary {
+      border: none;
+      border-radius: 12px;
+      padding: 0.55rem 1.2rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 0.15s ease, box-shadow 0.2s ease;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--primary), #3b82f6);
+      color: #fff;
+      box-shadow: 0 12px 24px rgba(37, 99, 235, 0.28);
+    }
+
+    .primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 32px rgba(37, 99, 235, 0.32);
+    }
+
+    .secondary {
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--primary-dark);
+      border: 1px solid rgba(37, 99, 235, 0.2);
+    }
+
+    .secondary:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    .session-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+
+    .session-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.85rem 1rem;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: #f8fbff;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.2s ease;
+    }
+
+    .session-item.active {
+      border-color: rgba(37, 99, 235, 0.4);
+      background: rgba(37, 99, 235, 0.12);
+    }
+
+    .session-item:hover {
+      transform: translateY(-1px);
+      background: rgba(37, 99, 235, 0.08);
+    }
+
+    .session-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .session-meta strong {
+      font-size: 1rem;
+      color: var(--primary-dark);
+    }
+
+    .session-meta span {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .transcript {
+      margin-top: 1.5rem;
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: #ffffff;
+      padding: 1.25rem;
+      max-height: 400px;
+      overflow: hidden;
+      display: none;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .transcript.active {
+      display: flex;
+    }
+
+    .transcript h3 {
+      margin: 0;
+      font-size: 1.1rem;
+      color: var(--primary-dark);
+    }
+
+    .message-container {
+      overflow-y: auto;
+      max-height: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .message {
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      line-height: 1.7;
+      font-size: 0.95rem;
+    }
+
+    .message.user {
+      background: rgba(37, 99, 235, 0.1);
+      align-self: flex-start;
+    }
+
+    .message.assistant {
+      background: rgba(249, 115, 22, 0.12);
+      align-self: flex-end;
+    }
+
+    .message.system {
+      background: rgba(15, 23, 42, 0.08);
+    }
+
+    .message .meta {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+      display: block;
+    }
+
+    .history-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+  </style>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const activeList = document.getElementById("activeSessions");
+      const historyList = document.getElementById("historySessions");
+      const activeStatus = document.getElementById("activeStatus");
+      const historyStatus = document.getElementById("historyStatus");
+      const activeMessages = document.getElementById("activeMessages");
+      const historyMessages = document.getElementById("historyMessages");
+      const activeTranscript = document.getElementById("activeTranscript");
+      const historyTranscript = document.getElementById("historyTranscript");
+      const refreshActiveBtn = document.getElementById("refreshActive");
+      const refreshHistoryBtn = document.getElementById("refreshHistory");
+      const prevHistoryBtn = document.getElementById("prevHistory");
+      const nextHistoryBtn = document.getElementById("nextHistory");
+      const historyPage = document.getElementById("historyPage");
+
+      const HISTORY_LIMIT = 10;
+      let historyOffset = 0;
+      let lastHistoryCount = 0;
+
+      function setStatus(element, message, isError = false) {
+        if (!element) return;
+        element.textContent = message;
+        element.classList.toggle("error", Boolean(isError));
+      }
+
+      function formatDate(value) {
+        try {
+          return new Date(value).toLocaleString("fa-IR");
+        } catch (error) {
+          return value;
+        }
+      }
+
+      function renderMessages(container, messages) {
+        container.innerHTML = "";
+        if (!messages.length) {
+          const empty = document.createElement("p");
+          empty.textContent = "پیامی برای نمایش وجود ندارد.";
+          empty.style.opacity = "0.7";
+          container.appendChild(empty);
+          return;
+        }
+        messages.forEach((message) => {
+          const wrapper = document.createElement("div");
+          wrapper.className = `message ${message.role}`;
+          const meta = document.createElement("span");
+          meta.className = "meta";
+          if (message.stored_at) {
+            meta.textContent = `نقش: ${message.role} • ذخیره شده: ${formatDate(message.stored_at)}`;
+          } else {
+            meta.textContent = `نقش: ${message.role} • زمان: ${formatDate(message.created_at)}`;
+          }
+          const content = document.createElement("div");
+          content.textContent = message.content;
+          wrapper.append(meta, content);
+          container.appendChild(wrapper);
+        });
+      }
+
+      function activateTranscript(section) {
+        section.classList.add("active");
+      }
+
+      function clearActiveState(list) {
+        list.querySelectorAll(".session-item").forEach((item) =>
+          item.classList.remove("active")
+        );
+      }
+
+      async function loadActiveSessions() {
+        setStatus(activeStatus, "در حال دریافت...");
+        activeList.innerHTML = "";
+        activeMessages.innerHTML = "";
+        activeTranscript.classList.remove("active");
+        try {
+          const sessions = await AdminUI.adminFetch("/admin/sessions");
+          if (!sessions.length) {
+            setStatus(activeStatus, "سشن فعالی ثبت نشده است.");
+            return;
+          }
+          setStatus(activeStatus, `تعداد سشن‌های فعال: ${sessions.length}`);
+          sessions.forEach((session) => {
+            const item = document.createElement("li");
+            item.className = "session-item";
+            item.dataset.id = session.id;
+            const meta = document.createElement("div");
+            meta.className = "session-meta";
+            meta.innerHTML = `
+              <strong>${session.id}</strong>
+              <span>ایجاد شده: ${formatDate(session.created_at)}</span>
+              <span>ارائه‌دهنده: ${session.provider || "-"}</span>
+            `;
+            item.appendChild(meta);
+            item.addEventListener("click", async () => {
+              clearActiveState(activeList);
+              item.classList.add("active");
+              setStatus(activeStatus, "در حال دریافت پیام‌ها...");
+              try {
+                const messages = await AdminUI.adminFetch(
+                  `/admin/sessions/${session.id}/messages`
+                );
+                renderMessages(activeMessages, messages);
+                activateTranscript(activeTranscript);
+                setStatus(activeStatus, `تعداد پیام‌های نمایش داده شده: ${messages.length}`);
+              } catch (error) {
+                renderMessages(activeMessages, []);
+                setStatus(activeStatus, error.message, true);
+              }
+            });
+            activeList.appendChild(item);
+          });
+        } catch (error) {
+          setStatus(activeStatus, error.message, true);
+        }
+      }
+
+      async function loadHistorySessions() {
+        setStatus(historyStatus, "در حال دریافت...");
+        historyList.innerHTML = "";
+        historyMessages.innerHTML = "";
+        historyTranscript.classList.remove("active");
+        try {
+          const payload = await AdminUI.adminFetch(
+            `/admin/history/sessions?limit=${HISTORY_LIMIT}&offset=${historyOffset}`
+          );
+          lastHistoryCount = payload.sessions.length;
+          historyPage.textContent = `صفحه ${historyOffset / HISTORY_LIMIT + 1}`;
+          prevHistoryBtn.disabled = historyOffset === 0;
+          nextHistoryBtn.disabled = lastHistoryCount < HISTORY_LIMIT;
+
+          if (!payload.sessions.length) {
+            if (historyOffset === 0) {
+              setStatus(historyStatus, "هنوز گفت‌وگوی ذخیره‌شده‌ای ثبت نشده است.");
+            } else {
+              setStatus(historyStatus, "نتیجه‌ای برای این صفحه وجود ندارد.");
+            }
+            return;
+          }
+
+          setStatus(historyStatus, `تعداد نتایج این صفحه: ${payload.sessions.length}`);
+
+          payload.sessions.forEach((session) => {
+            const item = document.createElement("li");
+            item.className = "session-item";
+            item.dataset.id = session.id;
+            const meta = document.createElement("div");
+            meta.className = "session-meta";
+            meta.innerHTML = `
+              <strong>${session.id}</strong>
+              <span>زمان ذخیره: ${formatDate(session.created_at)}</span>
+              <span>ارائه‌دهنده: ${session.provider || "-"}</span>
+            `;
+            item.appendChild(meta);
+            item.addEventListener("click", async () => {
+              clearActiveState(historyList);
+              item.classList.add("active");
+              setStatus(historyStatus, "در حال دریافت پیام‌های ذخیره‌شده...");
+              try {
+                const messages = await AdminUI.adminFetch(
+                  `/admin/history/sessions/${session.id}/messages?limit=100`
+                );
+                renderMessages(historyMessages, messages.messages);
+                activateTranscript(historyTranscript);
+                setStatus(historyStatus, `تعداد پیام‌ها: ${messages.messages.length}`);
+              } catch (error) {
+                renderMessages(historyMessages, []);
+                setStatus(historyStatus, error.message, true);
+              }
+            });
+            historyList.appendChild(item);
+          });
+        } catch (error) {
+          setStatus(historyStatus, error.message, true);
+          prevHistoryBtn.disabled = historyOffset === 0;
+          nextHistoryBtn.disabled = true;
+        }
+      }
+
+      refreshActiveBtn.addEventListener("click", loadActiveSessions);
+      refreshHistoryBtn.addEventListener("click", loadHistorySessions);
+      prevHistoryBtn.addEventListener("click", () => {
+        if (historyOffset === 0) return;
+        historyOffset = Math.max(historyOffset - HISTORY_LIMIT, 0);
+        loadHistorySessions();
+      });
+      nextHistoryBtn.addEventListener("click", () => {
+        if (lastHistoryCount < HISTORY_LIMIT) return;
+        historyOffset += HISTORY_LIMIT;
+        loadHistorySessions();
+      });
+
+      loadActiveSessions();
+      loadHistorySessions();
+    });
+  </script>
+{% endblock %}
