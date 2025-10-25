@@ -45,3 +45,9 @@ These instructions apply to the entire repository.
   backend changes.
 - Any new controls should remain aligned with the existing FastAPI endpoints so
   the file can operate as a drop-in static asset.
+
+## User-facing content guidelines
+- In HTML or any other user-visible assets (به‌جز README)، از نوشتن جملاتی که
+  به‌صورت مستقیم به آدرس یا متدهای API (مانند «داده‌های به‌دست‌آمده از
+  GET /metrics») اشاره می‌کنند، خودداری کنید. اطلاعات را به‌شکل توصیفی و
+  کاربرپسند بیان کنید.
