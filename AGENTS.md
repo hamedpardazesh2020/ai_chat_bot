@@ -36,3 +36,12 @@ These instructions apply to the entire repository.
 - OpenRouter (or another configured LLM backend) may only be changed through
   configuration values such as `MCP_AGENT_LLM` and `MCP_AGENT_MODEL`. Runtime
   toggles or ad-hoc request parameters are prohibited.
+
+## Admin UI example guidelines
+- The sample interface in `examples/admin_ui.html` must present a light (روشن)
+  color palette and use the Vazir font for all text, inputs, and buttons.
+- When extending the admin UI, prefer improvements that enhance usability for
+  non-technical operators (جستجو، برون‌بری، مدیریت ساده‌تر) without requiring
+  backend changes.
+- Any new controls should remain aligned with the existing FastAPI endpoints so
+  the file can operate as a drop-in static asset.

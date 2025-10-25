@@ -10,15 +10,19 @@
     />
     <style>
       :root {
-        color-scheme: light dark;
-        --bg: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-        --surface: rgba(255, 255, 255, 0.12);
-        --surface-light: rgba(255, 255, 255, 0.75);
-        --primary: #ffb400;
-        --accent: #42c3ff;
-        --text: #f5f7fb;
+        color-scheme: light;
+        --bg: linear-gradient(135deg, #f4f7ff 0%, #dbeafe 35%, #fef9c3 100%);
+        --surface: rgba(255, 255, 255, 0.92);
+        --surface-strong: #ffffff;
+        --surface-subtle: rgba(15, 23, 42, 0.05);
+        --primary: #2563eb;
+        --primary-dark: #1d4ed8;
+        --accent: #f97316;
+        --text: #1f2933;
+        --muted: #475569;
+        --border: rgba(148, 163, 184, 0.45);
         font-size: 16px;
-        font-family: "Vazir", "IRANSans", "Vazirmatn", "Segoe UI", sans-serif;
+        font-family: "Vazir", "Vazirmatn", "IRANSans", "Segoe UI", sans-serif;
       }
 
       * {
@@ -37,43 +41,57 @@
       }
 
       .panel {
-        width: min(960px, 100%);
-        background: rgba(17, 25, 40, 0.75);
+        width: min(1080px, 100%);
+        background: var(--surface);
         border-radius: 28px;
-        backdrop-filter: blur(22px);
-        padding: 2.5rem 3rem;
-        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
-        border: 1px solid rgba(255, 255, 255, 0.18);
+        backdrop-filter: blur(18px);
+        padding: 2.75rem 3rem;
+        box-shadow: 0 28px 60px rgba(15, 23, 42, 0.12);
+        border: 1px solid var(--border);
       }
 
       h1 {
-        margin: 0 0 0.5rem;
-        font-size: 2.2rem;
-        letter-spacing: -0.5px;
+        margin: 0 0 0.75rem;
+        font-size: 2.35rem;
+        letter-spacing: -0.4px;
+        color: var(--primary-dark);
       }
 
       p.description {
-        margin: 0 0 2rem;
-        color: rgba(245, 247, 251, 0.8);
-        line-height: 1.8;
+        margin: 0 0 2.3rem;
+        color: var(--muted);
+        line-height: 1.9;
+        font-size: 1.05rem;
       }
 
       .grid {
         display: grid;
         gap: 1.75rem;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+
+      .grid.grid--compact {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.25rem;
       }
 
       .card {
-        background: var(--surface);
+        background: var(--surface-strong);
         border-radius: 20px;
-        padding: 1.75rem;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+        padding: 1.9rem;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.1);
       }
 
       .card h2 {
         margin-top: 0;
-        font-size: 1.4rem;
+        font-size: 1.45rem;
         color: var(--primary);
       }
 
@@ -81,24 +99,36 @@
         display: block;
         margin-bottom: 0.5rem;
         font-weight: 600;
-        color: rgba(255, 255, 255, 0.9);
+        color: var(--text);
       }
 
-      input {
+      input,
+      textarea,
+      select {
         width: 100%;
         padding: 0.85rem 1rem;
         border-radius: 14px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        background: rgba(14, 21, 37, 0.65);
+        border: 1px solid rgba(148, 163, 184, 0.45);
+        background: #f8fbff;
         color: var(--text);
         font-size: 1rem;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        font-family: inherit;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
       }
 
-      input:focus {
+      textarea {
+        resize: vertical;
+        min-height: 140px;
+        line-height: 1.6;
+      }
+
+      input:focus,
+      textarea:focus,
+      select:focus {
         outline: none;
-        border-color: var(--accent);
-        box-shadow: 0 0 0 3px rgba(66, 195, 255, 0.35);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        background: #ffffff;
       }
 
       button {
@@ -108,25 +138,50 @@
         font-size: 1rem;
         font-weight: 600;
         cursor: pointer;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
-        background: linear-gradient(135deg, var(--primary), #ff6f61);
-        color: #121826;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease;
+        font-family: inherit;
       }
 
-      button:hover {
+      button.primary {
+        background: linear-gradient(135deg, var(--primary), #3b82f6);
+        color: #ffffff;
+      }
+
+      button.primary:hover {
         transform: translateY(-2px);
-        box-shadow: 0 12px 24px rgba(255, 111, 97, 0.35);
+        box-shadow: 0 12px 24px rgba(37, 99, 235, 0.28);
       }
 
       button.secondary {
-        background: rgba(255, 255, 255, 0.12);
-        color: var(--text);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(37, 99, 235, 0.12);
+        color: var(--primary-dark);
+        border: 1px solid rgba(37, 99, 235, 0.2);
       }
 
       button.secondary:hover {
-        background: rgba(255, 255, 255, 0.18);
-        box-shadow: none;
+        background: rgba(37, 99, 235, 0.18);
+      }
+
+      button.ghost {
+        background: rgba(15, 23, 42, 0.04);
+        color: var(--primary-dark);
+        border: 1px solid transparent;
+        padding-inline: 1rem;
+        min-width: 100px;
+      }
+
+      button.ghost:hover {
+        background: rgba(37, 99, 235, 0.1);
+      }
+
+      button.full-width {
+        width: 100%;
+        justify-content: center;
+      }
+
+      button:focus-visible {
+        outline: 3px solid rgba(37, 99, 235, 0.35);
+        outline-offset: 2px;
       }
 
       .inline-form {
@@ -140,28 +195,78 @@
         flex: 1 1 220px;
       }
 
+      .stack-form {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+      }
+
+      .toolbar {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        margin-bottom: 1rem;
+      }
+
+      .toolbar-input {
+        flex: 1 1 220px;
+      }
+
+      .toolbar-buttons {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+
+      .input-with-button {
+        display: flex;
+        gap: 0.6rem;
+        align-items: stretch;
+      }
+
+      .input-with-button input {
+        flex: 1;
+      }
+
       .status {
         margin-top: 1rem;
         font-size: 0.95rem;
         line-height: 1.6;
-        color: var(--text);
+        color: var(--muted);
       }
 
       .status.error {
-        color: #ff8a8a;
+        color: #dc2626;
+      }
+
+      .meta {
+        margin: 0.75rem 0 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .hint {
+        margin-top: 0.5rem;
+        color: rgba(15, 23, 42, 0.6);
+        font-size: 0.9rem;
+        line-height: 1.6;
       }
 
       .runtime-output {
         margin-top: 1rem;
-        background: rgba(0, 0, 0, 0.35);
+        background: #f1f5f9;
         border-radius: 14px;
         padding: 1rem;
         direction: ltr;
         text-align: left;
         overflow-x: auto;
         white-space: pre-wrap;
-        max-height: 240px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        max-height: 260px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        color: #0f172a;
+        font-family: "SFMono-Regular", "Consolas", "Courier New", monospace;
+        font-size: 0.92rem;
       }
 
       ul#bypass-list {
@@ -173,28 +278,72 @@
       }
 
       ul#bypass-list li {
-        background: rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
-        padding: 0.9rem 1.1rem;
+        background: #f8fbff;
+        border-radius: 14px;
+        padding: 0.95rem 1.15rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
         font-size: 1.05rem;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        gap: 1rem;
+      }
+
+      ul#bypass-list li span {
+        flex: 1;
+        word-break: break-word;
       }
 
       ul#bypass-list li button {
-        padding: 0.5rem 1.1rem;
+        padding: 0.55rem 1.2rem;
         font-size: 0.9rem;
         border-radius: 10px;
-        background: rgba(255, 255, 255, 0.15);
-        color: var(--text);
+        background: rgba(239, 68, 68, 0.12);
+        color: #b91c1c;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+      }
+
+      ul#bypass-list li button:hover {
+        background: rgba(239, 68, 68, 0.18);
+      }
+
+      .tips {
+        margin: 0.75rem 0 0;
+        padding-inline-start: 1.2rem;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .tips li {
+        margin-bottom: 0.35rem;
       }
 
       footer {
-        margin-top: 2rem;
+        margin-top: 2.5rem;
         text-align: center;
-        color: rgba(255, 255, 255, 0.45);
-        font-size: 0.85rem;
+        color: rgba(15, 23, 42, 0.55);
+        font-size: 0.88rem;
+      }
+
+      @media (max-width: 900px) {
+        .panel {
+          padding: 2rem 1.5rem;
+        }
+      }
+
+      @media (max-width: 600px) {
+        body {
+          padding: 1.5rem 1rem;
+        }
+
+        .toolbar-buttons {
+          width: 100%;
+          justify-content: stretch;
+        }
+
+        .toolbar-buttons button {
+          flex: 1 1 auto;
+        }
       }
     </style>
   </head>
@@ -202,30 +351,56 @@
     <main class="panel">
       <h1>پنل مدیریت ریت لیمیت</h1>
       <p class="description">
-        با استفاده از این رابط می‌توانید آی‌پی‌های دارای دسترسی ویژه را مدیریت کنید.
-        ابتدا آدرس سرویس و توکن ادمین را وارد کرده و سپس درخواست‌ها را ارسال نمایید.
+        در این رابط کاربری می‌توانید آی‌پی‌های مجاز و وضعیت سرویس را بدون نیاز به
+        ابزارهای خط فرمان مدیریت کنید. رابط برای کاربری روزمره در فضای روشن بهینه
+        شده و تایپوگرافی آن بر پایه فونت «وزیر» است.
       </p>
 
       <section class="grid">
         <div class="card">
           <h2>پیکربندی اتصال</h2>
-          <div class="grid">
+          <div class="grid grid--compact">
             <div>
               <label for="baseUrl">آدرس سرویس (Base URL)</label>
-              <input id="baseUrl" type="url" value="http://localhost:8000" />
+              <input id="baseUrl" type="url" placeholder="https://example.com" />
             </div>
             <div>
               <label for="token">توکن ادمین (X-Admin-Token)</label>
-              <input id="token" type="password" placeholder="توکن را وارد کنید" />
+              <div class="input-with-button">
+                <input
+                  id="token"
+                  type="password"
+                  placeholder="توکن را وارد کنید"
+                  autocomplete="off"
+                />
+                <button type="button" id="toggleToken" class="ghost">نمایش</button>
+              </div>
             </div>
           </div>
           <p class="status" id="connectionStatus"></p>
+          <p class="hint">اطلاعات اتصال در مرورگر شما ذخیره می‌شود و هر زمان قابل تغییر است.</p>
         </div>
 
         <div class="card">
-          <h2>دریافت فهرست آی‌پی‌ها</h2>
-          <button id="fetchBtn">دریافت لیست</button>
+          <h2>دریافت و مدیریت آی‌پی‌ها</h2>
+          <div class="toolbar">
+            <div class="toolbar-input">
+              <label for="searchInput">جستجوی سریع</label>
+              <input
+                id="searchInput"
+                type="search"
+                placeholder="عبارت یا آی‌پی را وارد کنید"
+                autocomplete="off"
+              />
+            </div>
+            <div class="toolbar-buttons">
+              <button id="copyBtn" type="button" class="secondary">کپی لیست</button>
+              <button id="exportBtn" type="button" class="secondary">دانلود JSON</button>
+            </div>
+          </div>
+          <button id="fetchBtn" type="button" class="primary full-width">دریافت لیست</button>
           <p class="status" id="fetchStatus"></p>
+          <p class="meta" id="countInfo"></p>
           <ul id="bypass-list"></ul>
         </div>
 
@@ -236,28 +411,61 @@
               <label for="ipInput">آی‌پی</label>
               <input id="ipInput" type="text" placeholder="مثال: 203.0.113.24" required />
             </div>
-            <button type="submit">افزودن</button>
+            <button type="submit" class="primary">افزودن</button>
           </form>
           <p class="status" id="addStatus"></p>
         </div>
 
         <div class="card">
+          <h2>افزودن گروهی آی‌پی‌ها</h2>
+          <form id="bulkForm" class="stack-form">
+            <label for="bulkInput">هر آی‌پی را در یک خط وارد کنید</label>
+            <textarea
+              id="bulkInput"
+              placeholder="مثال:
+192.0.2.1
+198.51.100.25"
+            ></textarea>
+            <p class="hint">
+              ورودی‌های تکراری به صورت خودکار حذف می‌شوند. برای هر آی‌پی درخواست جداگانه ارسال
+              خواهد شد.
+            </p>
+            <button type="submit" class="primary">افزودن آی‌پی‌های انتخابی</button>
+          </form>
+          <p class="status" id="bulkStatus"></p>
+        </div>
+
+        <div class="card">
           <h2>وضعیت اجرای سرویس</h2>
-          <button id="runtimeBtn">نمایش وضعیت</button>
+          <p class="hint">
+            برای دریافت نمای کلی از وضعیت کنونی سرویس، درخواست Runtime را ارسال کنید.
+          </p>
+          <button id="runtimeBtn" type="button" class="primary full-width">نمایش وضعیت</button>
           <p class="status" id="runtimeStatus"></p>
           <pre id="runtimeOutput" class="runtime-output"></pre>
+        </div>
+
+        <div class="card">
+          <h2>راهنمای سریع</h2>
+          <ul class="tips">
+            <li>قبل از حذف آی‌پی، ابتدا از لیست خروجی JSON تهیه کنید تا نسخه پشتیبان داشته باشید.</li>
+            <li>از قابلیت جستجو برای پیدا کردن سریع آی‌پی‌ها در لیست‌های طولانی استفاده کنید.</li>
+            <li>برای امنیت بیشتر پس از اتمام کار، دکمه «مخفی کردن» را بزنید تا توکن از دید خارج شود.</li>
+            <li>در صورت تغییر آدرس سرویس، تنظیمات ذخیره‌شده را با حذف مقدار فیلد به‌روزرسانی کنید.</li>
+          </ul>
         </div>
       </section>
 
       <footer>
-        توسعه یافته برای کار با سرویس FastAPI شما – همه درخواست‌ها با هدر ادمین ارسال
-        می‌شوند.
+        توسعه یافته برای سرویس FastAPI – تمام درخواست‌ها با هدر ادمین ارسال می‌شوند و با
+        رابط روشن و خوانا در اختیار تیم شما قرار می‌گیرند.
       </footer>
     </main>
 
     <script>
       const baseUrlInput = document.getElementById("baseUrl");
       const tokenInput = document.getElementById("token");
+      const toggleTokenBtn = document.getElementById("toggleToken");
       const connectionStatus = document.getElementById("connectionStatus");
       const fetchBtn = document.getElementById("fetchBtn");
       const fetchStatus = document.getElementById("fetchStatus");
@@ -267,6 +475,62 @@
       const runtimeBtn = document.getElementById("runtimeBtn");
       const runtimeStatus = document.getElementById("runtimeStatus");
       const runtimeOutput = document.getElementById("runtimeOutput");
+      const searchInput = document.getElementById("searchInput");
+      const copyBtn = document.getElementById("copyBtn");
+      const exportBtn = document.getElementById("exportBtn");
+      const countInfo = document.getElementById("countInfo");
+      const bulkForm = document.getElementById("bulkForm");
+      const bulkInput = document.getElementById("bulkInput");
+      const bulkStatus = document.getElementById("bulkStatus");
+
+      const STORAGE_KEYS = {
+        baseUrl: "admin-ui-base-url",
+        token: "admin-ui-token",
+      };
+
+      let bypassCache = [];
+
+      function withLocalStorage(callback) {
+        try {
+          callback();
+        } catch (error) {
+          console.warn("localStorage is not available:", error);
+        }
+      }
+
+      function loadSettings() {
+        withLocalStorage(() => {
+          const savedBaseUrl = localStorage.getItem(STORAGE_KEYS.baseUrl);
+          const savedToken = localStorage.getItem(STORAGE_KEYS.token);
+          if (savedBaseUrl) {
+            baseUrlInput.value = savedBaseUrl;
+          }
+          if (savedToken) {
+            tokenInput.value = savedToken;
+          }
+        });
+      }
+
+      function persistSettings() {
+        withLocalStorage(() => {
+          const trimmedBaseUrl = baseUrlInput.value.trim();
+          const trimmedToken = tokenInput.value.trim();
+          if (trimmedBaseUrl) {
+            localStorage.setItem(STORAGE_KEYS.baseUrl, trimmedBaseUrl);
+          } else {
+            localStorage.removeItem(STORAGE_KEYS.baseUrl);
+          }
+          if (trimmedToken) {
+            localStorage.setItem(STORAGE_KEYS.token, trimmedToken);
+          } else {
+            localStorage.removeItem(STORAGE_KEYS.token);
+          }
+        });
+        connectionStatus.textContent = "تنظیمات ذخیره شد و آماده استفاده است.";
+        connectionStatus.classList.remove("error");
+      }
+
+      loadSettings();
 
       function buildHeaders() {
         const token = tokenInput.value.trim();
@@ -279,10 +543,12 @@
       }
 
       function clearStatus() {
-        [fetchStatus, addStatus, connectionStatus, runtimeStatus].forEach((el) => {
-          el.textContent = "";
-          el.classList.remove("error");
-        });
+        [fetchStatus, addStatus, connectionStatus, runtimeStatus, bulkStatus].forEach(
+          (el) => {
+            el.textContent = "";
+            el.classList.remove("error");
+          }
+        );
       }
 
       function showError(element, message) {
@@ -323,31 +589,69 @@
         return text ? JSON.parse(text) : null;
       }
 
+      function updateCount(visibleCount, filtered) {
+        if (!bypassCache.length) {
+          countInfo.textContent = "آی‌پی ثبت نشده است.";
+          return;
+        }
+        if (filtered) {
+          countInfo.textContent = `نمایش ${visibleCount} از ${bypassCache.length} آی‌پی ثبت‌شده.`;
+        } else {
+          countInfo.textContent = `تعداد کل آی‌پی‌های ثبت‌شده: ${bypassCache.length}`;
+        }
+      }
+
+      function renderList(filterText = "") {
+        const normalized = filterText.trim().toLowerCase();
+        const filtered = normalized
+          ? bypassCache.filter((ip) => ip.toLowerCase().includes(normalized))
+          : [...bypassCache];
+
+        bypassList.innerHTML = "";
+
+        if (filtered.length === 0) {
+          const empty = document.createElement("li");
+          empty.textContent = normalized
+            ? "آی‌پی مطابق با جستجو یافت نشد."
+            : "آی‌پی ثبت نشده است.";
+          empty.style.justifyContent = "center";
+          empty.style.opacity = "0.7";
+          empty.style.fontSize = "1rem";
+          bypassList.appendChild(empty);
+        } else {
+          filtered.forEach((ip) => {
+            const li = document.createElement("li");
+            li.innerHTML = `<span>${ip}</span>`;
+            const btn = document.createElement("button");
+            btn.textContent = "حذف";
+            btn.addEventListener("click", () => removeIp(ip));
+            li.appendChild(btn);
+            bypassList.appendChild(li);
+          });
+        }
+
+        updateCount(filtered.length, Boolean(normalized));
+      }
+
+      function getFilteredList() {
+        return searchInput.value.trim()
+          ? bypassCache.filter((ip) =>
+              ip.toLowerCase().includes(searchInput.value.trim().toLowerCase())
+            )
+          : [...bypassCache];
+      }
+
       async function refreshList() {
         fetchStatus.textContent = "در حال دریافت...";
         fetchStatus.classList.remove("error");
         try {
           const data = await request("/admin/bypass");
-          bypassList.innerHTML = "";
-          if (data.length === 0) {
-            const empty = document.createElement("li");
-            empty.textContent = "آی‌پی ثبت نشده است.";
-            empty.style.justifyContent = "center";
-            empty.style.opacity = "0.7";
-            bypassList.appendChild(empty);
-          } else {
-            data.forEach((ip) => {
-              const li = document.createElement("li");
-              li.innerHTML = `<span>${ip}</span>`;
-              const btn = document.createElement("button");
-              btn.textContent = "حذف";
-              btn.addEventListener("click", () => removeIp(ip));
-              li.appendChild(btn);
-              bypassList.appendChild(li);
-            });
-          }
+          bypassCache = Array.isArray(data) ? data : [];
+          renderList(searchInput.value);
           fetchStatus.textContent = "لیست با موفقیت دریافت شد.";
         } catch (error) {
+          bypassCache = [];
+          renderList(searchInput.value);
           showError(fetchStatus, error.message);
         }
       }
@@ -404,14 +708,109 @@
         }
       });
 
+      bulkForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        bulkStatus.textContent = "در حال پردازش...";
+        bulkStatus.classList.remove("error");
+
+        const rawValues = bulkInput.value
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+
+        if (!rawValues.length) {
+          showError(bulkStatus, "هیچ آی‌پی معتبری وارد نشده است.");
+          return;
+        }
+
+        const uniqueIps = [...new Set(rawValues)];
+        const failed = [];
+        let successCount = 0;
+
+        for (const ip of uniqueIps) {
+          try {
+            await request("/admin/bypass", {
+              method: "POST",
+              body: JSON.stringify({ ip }),
+            });
+            successCount += 1;
+          } catch (error) {
+            failed.push({ ip, message: error.message });
+          }
+        }
+
+        if (failed.length) {
+          const failedIps = failed.map((item) => item.ip).join("، ");
+          showError(
+            bulkStatus,
+            `افزودن ${failed.length} آی‌پی با خطا مواجه شد: ${failedIps}`
+          );
+        } else {
+          bulkStatus.textContent = `${successCount} آی‌پی با موفقیت افزوده شد.`;
+          bulkInput.value = "";
+        }
+
+        await refreshList();
+      });
+
       fetchBtn.addEventListener("click", refreshList);
       runtimeBtn.addEventListener("click", fetchRuntime);
 
       [baseUrlInput, tokenInput].forEach((input) => {
-        input.addEventListener("input", () => {
-          connectionStatus.textContent = "تنظیمات ذخیره شد.";
-        });
+        input.addEventListener("input", persistSettings);
       });
+
+      searchInput.addEventListener("input", () => {
+        renderList(searchInput.value);
+      });
+
+      copyBtn.addEventListener("click", async () => {
+        const filtered = getFilteredList();
+        if (!filtered.length) {
+          showError(fetchStatus, "آی‌پی‌ای برای کپی وجود ندارد.");
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(filtered.join("\n"));
+          fetchStatus.textContent = "لیست در کلیپ‌بورد کپی شد.";
+          fetchStatus.classList.remove("error");
+        } catch (error) {
+          showError(fetchStatus, "امکان دسترسی به کلیپ‌بورد وجود ندارد.");
+        }
+      });
+
+      exportBtn.addEventListener("click", () => {
+        const filtered = getFilteredList();
+        if (!filtered.length) {
+          showError(fetchStatus, "آی‌پی‌ای برای ذخیره وجود ندارد.");
+          return;
+        }
+        const blob = new Blob([JSON.stringify(filtered, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "bypass-list.json";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        fetchStatus.textContent = "فایل JSON با موفقیت آماده شد.";
+        fetchStatus.classList.remove("error");
+      });
+
+      if (toggleTokenBtn) {
+        toggleTokenBtn.addEventListener("click", () => {
+          const isHidden = tokenInput.type === "password";
+          tokenInput.type = isHidden ? "text" : "password";
+          toggleTokenBtn.textContent = isHidden ? "مخفی کردن" : "نمایش";
+          toggleTokenBtn.setAttribute("aria-pressed", String(isHidden));
+        });
+      }
+
+      // مقدار اولیه لیست برای هماهنگی با پیام شمارنده
+      renderList("");
     </script>
   </body>
 </html>
