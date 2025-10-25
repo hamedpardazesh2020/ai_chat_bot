@@ -71,3 +71,13 @@ async def token_page(request: Request) -> HTMLResponse:
         "admin/token.html",
         {"request": request, "page_id": "token"},
     )
+
+
+@router.get("/config", response_class=HTMLResponse, name="admin-ui-config")
+async def config_page(request: Request) -> HTMLResponse:
+    """Render the application configuration management interface."""
+
+    return templates.TemplateResponse(
+        "admin/config.html",
+        {"request": request, "page_id": "config"},
+    )

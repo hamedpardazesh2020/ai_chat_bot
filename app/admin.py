@@ -408,4 +408,124 @@ async def get_history_session_messages(
     )
 
 
+class ConfigFieldUpdate(BaseModel):
+    """Request model for updating a single config field."""
+
+    field: str = Field(..., description="Configuration field name to update.")
+    value: Any = Field(..., description="New value for the configuration field.")
+
+
+class ConfigResponse(BaseModel):
+    """Response model containing the current configuration."""
+
+    config: dict[str, Any] = Field(description="Current configuration values.")
+    file_path: str = Field(description="Path to the configuration file.")
+    available_fields: list[str] = Field(
+        description="List of configurable field names.",
+    )
+
+
+@router.get(
+    "/config",
+    response_model=ConfigResponse,
+    summary="Get current configuration",
+    response_description="Current application configuration settings.",
+)
+async def get_configuration(_: str = Depends(require_admin_token)) -> ConfigResponse:
+    """Return the current application configuration."""
+    from pathlib import Path
+    import yaml
+
+    settings = get_settings()
+
+    # Try to find the config file
+    config_path = None
+    config_data = {}
+
+    # Check if APP_CONFIG_FILE is set
+    import os
+
+    configured_path = os.getenv("APP_CONFIG_FILE")
+    if configured_path:
+        config_path = Path(configured_path)
+    else:
+        # Use the discovery logic from Settings
+        from .config import _DEFAULT_CONFIG_CANDIDATES
+
+        for candidate in _DEFAULT_CONFIG_CANDIDATES:
+            if candidate.exists():
+                config_path = candidate
+                break
+
+    if config_path and config_path.exists():
+        config_data = yaml.safe_load(config_path.read_text()) or {}
+    else:
+        # Return empty config if no file found
+        config_path = Path(__file__).parent / "config" / "app.config.yaml"
+
+    # Get all available fields from Settings model
+    available_fields = list(settings.model_fields.keys())
+
+    return ConfigResponse(
+        config=config_data,
+        file_path=str(config_path),
+        available_fields=available_fields,
+    )
+
+
+@router.put(
+    "/config",
+    response_model=dict[str, str],
+    summary="Update configuration field",
+    response_description="Confirmation of configuration update.",
+)
+async def update_configuration(
+    update: ConfigFieldUpdate,
+    _: str = Depends(require_admin_token),
+) -> dict[str, str]:
+    """Update a single configuration field in the YAML file."""
+    from pathlib import Path
+    import yaml
+    import os
+
+    settings = get_settings()
+
+    # Validate that the field exists in Settings
+    if update.field not in settings.model_fields:
+        raise APIError(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            code="invalid_field",
+            message=f"Configuration field '{update.field}' is not valid.",
+        )
+
+    # Find the config file
+    config_path = None
+    configured_path = os.getenv("APP_CONFIG_FILE")
+    if configured_path:
+        config_path = Path(configured_path)
+    else:
+        from .config import _DEFAULT_CONFIG_CANDIDATES
+
+        for candidate in _DEFAULT_CONFIG_CANDIDATES:
+            if candidate.exists():
+                config_path = candidate
+                break
+
+    if not config_path or not config_path.exists():
+        # Create new config file
+        config_path = Path(__file__).parent / "config" / "app.config.yaml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_data = {}
+    else:
+        config_data = yaml.safe_load(config_path.read_text()) or {}
+
+    # Update the field
+    config_data[update.field] = update.value
+
+    # Write back to file
+    config_path.write_text(yaml.dump(config_data, allow_unicode=True, sort_keys=False))
+
+    return {"message": f"Configuration field '{update.field}' updated successfully."}
+
+
 __all__ = ["require_admin_token", "router"]

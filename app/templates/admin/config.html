@@ -1,0 +1,245 @@
+{% extends "admin/base.html" %}
+
+{% block title %}مدیریت تنظیمات{% endblock %}
+
+{% block content %}
+  <section>
+    <h1 style="margin-top: 0; color: var(--primary)">مدیریت تنظیمات برنامه</h1>
+    <p style="color: var(--muted); line-height: 1.8">
+      از این بخش می‌توانید تنظیمات برنامه را به‌صورت مستقیم مشاهده و ویرایش کنید.
+      تغییرات در فایل کانفیگ ذخیره می‌شود و برای اعمال کامل نیاز به راه‌اندازی مجدد سرویس دارد.
+    </p>
+
+    <div class="config-info" style="margin: 1.5rem 0; padding: 1rem; background: var(--surface-subtle); border-radius: 12px; border: 1px solid var(--border)">
+      <p style="margin: 0; color: var(--muted); font-size: 0.9rem">
+        <strong>مسیر فایل:</strong> <span id="configFilePath" style="font-family: monospace; color: var(--primary)">در حال بارگذاری...</span>
+      </p>
+    </div>
+
+    <div id="configStatus" class="status-message" style="margin: 1rem 0"></div>
+
+    <div id="configContainer" style="margin-top: 2rem">
+      <p style="text-align: center; color: var(--muted)">در حال بارگذاری تنظیمات...</p>
+    </div>
+
+    <div style="margin-top: 2rem; padding: 1.5rem; background: var(--surface-subtle); border-radius: 12px; border: 1px solid var(--border)">
+      <h3 style="margin-top: 0; color: var(--primary)">راهنمای فیلدها</h3>
+      <div style="display: grid; gap: 1rem; font-size: 0.9rem">
+        <div>
+          <strong>admin_token:</strong> توکن امنیتی برای دسترسی به پنل مدیریت
+        </div>
+        <div>
+          <strong>default_provider_name:</strong> نام ارائه‌دهنده پیش‌فرض (مثلاً mcp-agent یا openai)
+        </div>
+        <div>
+          <strong>openrouter_key:</strong> کلید API برای سرویس OpenRouter
+        </div>
+        <div>
+          <strong>initial_system_prompt:</strong> پیام سیستمی اولیه برای شروع مکالمه
+        </div>
+        <div>
+          <strong>redis_url:</strong> آدرس اتصال به Redis
+        </div>
+        <div>
+          <strong>rate_rps:</strong> تعداد درخواست مجاز در هر ثانیه
+        </div>
+        <div>
+          <strong>rate_burst:</strong> حداکثر درخواست‌های همزمان
+        </div>
+        <div>
+          <strong>memory_default:</strong> تعداد پیش‌فرض پیام‌های ذخیره شده در حافظه
+        </div>
+        <div>
+          <strong>memory_max:</strong> حداکثر تعداد پیام‌های ذخیره شده در حافظه
+        </div>
+        <div>
+          <strong>history_storage_backend:</strong> نوع ذخیره‌ساز تاریخچه (none, mysql, mongodb, redis)
+        </div>
+        <div>
+          <strong>metrics_enabled:</strong> فعال‌سازی جمع‌آوری متریک‌ها (true/false)
+        </div>
+        <div>
+          <strong>log_level:</strong> سطح لاگ (DEBUG, INFO, WARNING, ERROR)
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
+{% block extra_js %}
+  <script>
+    (async function () {
+      const configContainer = document.getElementById("configContainer");
+      const configStatus = document.getElementById("configStatus");
+      const configFilePath = document.getElementById("configFilePath");
+
+      function showStatus(message, isError = false) {
+        if (!configStatus) return;
+        configStatus.textContent = message;
+        configStatus.classList.toggle("error", Boolean(isError));
+      }
+
+      function parseValue(valueStr, currentValue) {
+        const trimmed = valueStr.trim();
+
+        // Handle null/none values
+        if (trimmed === "null" || trimmed === "none" || trimmed === "") {
+          return null;
+        }
+
+        // Handle boolean values
+        if (trimmed.toLowerCase() === "true") return true;
+        if (trimmed.toLowerCase() === "false") return false;
+
+        // Handle numbers
+        if (!isNaN(trimmed) && trimmed !== "") {
+          const num = Number(trimmed);
+          return Number.isInteger(num) ? parseInt(trimmed, 10) : parseFloat(trimmed);
+        }
+
+        // Handle arrays (JSON format)
+        if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+          try {
+            return JSON.parse(trimmed);
+          } catch (e) {
+            return trimmed;
+          }
+        }
+
+        // Return as string
+        return trimmed;
+      }
+
+      function createFieldEditor(fieldName, value) {
+        const fieldDiv = document.createElement("div");
+        fieldDiv.className = "config-field";
+        fieldDiv.style.cssText = "margin-bottom: 1.5rem; padding: 1.5rem; background: var(--surface-strong); border-radius: 16px; border: 1px solid var(--border)";
+
+        const label = document.createElement("label");
+        label.style.cssText = "display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text)";
+        label.textContent = fieldName;
+
+        const inputGroup = document.createElement("div");
+        inputGroup.style.cssText = "display: flex; gap: 0.75rem; align-items: flex-start";
+
+        let input;
+        const valueType = typeof value;
+
+        if (valueType === "boolean") {
+          input = document.createElement("select");
+          input.style.cssText = "flex: 1; padding: 0.7rem; border-radius: 10px; border: 1px solid var(--border); font-family: inherit; font-size: 0.95rem";
+          const trueOpt = document.createElement("option");
+          trueOpt.value = "true";
+          trueOpt.textContent = "true";
+          const falseOpt = document.createElement("option");
+          falseOpt.value = "false";
+          falseOpt.textContent = "false";
+          input.appendChild(trueOpt);
+          input.appendChild(falseOpt);
+          input.value = value ? "true" : "false";
+        } else if (fieldName.includes("prompt") || (typeof value === "string" && value.length > 100)) {
+          input = document.createElement("textarea");
+          input.rows = 4;
+          input.style.cssText = "flex: 1; padding: 0.7rem; border-radius: 10px; border: 1px solid var(--border); font-family: inherit; font-size: 0.95rem; resize: vertical";
+          input.value = value === null ? "" : String(value);
+        } else if (Array.isArray(value)) {
+          input = document.createElement("textarea");
+          input.rows = 3;
+          input.style.cssText = "flex: 1; padding: 0.7rem; border-radius: 10px; border: 1px solid var(--border); font-family: monospace; font-size: 0.9rem; resize: vertical";
+          input.value = JSON.stringify(value, null, 2);
+        } else {
+          input = document.createElement("input");
+          input.type = "text";
+          input.style.cssText = "flex: 1; padding: 0.7rem; border-radius: 10px; border: 1px solid var(--border); font-family: inherit; font-size: 0.95rem";
+          input.value = value === null ? "" : String(value);
+        }
+
+        const saveBtn = document.createElement("button");
+        saveBtn.className = "primary";
+        saveBtn.textContent = "ذخیره";
+        saveBtn.style.cssText = "padding: 0.7rem 1.5rem; white-space: nowrap";
+        saveBtn.onclick = async () => {
+          try {
+            saveBtn.disabled = true;
+            saveBtn.textContent = "در حال ذخیره...";
+
+            const newValue = parseValue(input.value, value);
+
+            await window.AdminUI.adminFetch("/admin/config", {
+              method: "PUT",
+              body: JSON.stringify({ field: fieldName, value: newValue }),
+            });
+
+            showStatus(`فیلد "${fieldName}" با موفقیت ذخیره شد. برای اعمال تغییرات، سرویس را مجدداً راه‌اندازی کنید.`);
+            saveBtn.textContent = "✓ ذخیره شد";
+            setTimeout(() => {
+              saveBtn.textContent = "ذخیره";
+              saveBtn.disabled = false;
+            }, 2000);
+          } catch (error) {
+            showStatus(`خطا در ذخیره فیلد "${fieldName}": ${error.message}`, true);
+            saveBtn.textContent = "ذخیره";
+            saveBtn.disabled = false;
+          }
+        };
+
+        inputGroup.appendChild(input);
+        inputGroup.appendChild(saveBtn);
+        fieldDiv.appendChild(label);
+        fieldDiv.appendChild(inputGroup);
+
+        return fieldDiv;
+      }
+
+      async function loadConfig() {
+        try {
+          showStatus("در حال بارگذاری تنظیمات...");
+          const data = await window.AdminUI.adminFetch("/admin/config");
+
+          if (configFilePath) {
+            configFilePath.textContent = data.file_path;
+          }
+
+          configContainer.innerHTML = "";
+
+          // Group fields by category
+          const categories = {
+            "تنظیمات عمومی": ["admin_token", "default_provider_name", "initial_system_prompt", "provider_timeout_seconds"],
+            "OpenRouter": ["openrouter_key", "openrouter_base_url", "openrouter_default_model"],
+            "OpenAI": ["openai_api_key"],
+            "MCP Agent": ["mcp_agent_config", "mcp_agent_servers", "mcp_agent_app_name", "mcp_agent_instruction", "mcp_agent_llm_provider", "mcp_agent_default_model"],
+            "Redis و Rate Limiting": ["redis_url", "rate_rps", "rate_burst"],
+            "حافظه": ["memory_default", "memory_max"],
+            "ذخیره‌سازی تاریخچه": ["history_storage_backend", "history_namespace", "history_mysql_host", "history_mysql_port", "history_mysql_user", "history_mysql_password", "history_mysql_database", "history_mysql_session_table", "history_mysql_message_table", "history_mongodb_uri", "history_mongodb_database", "history_mongodb_session_collection", "history_mongodb_message_collection", "history_redis_url"],
+            "متریک‌ها و لاگ": ["metrics_enabled", "log_level"],
+          };
+
+          for (const [categoryName, fields] of Object.entries(categories)) {
+            const categorySection = document.createElement("div");
+            categorySection.style.cssText = "margin-bottom: 2.5rem";
+
+            const categoryTitle = document.createElement("h2");
+            categoryTitle.textContent = categoryName;
+            categoryTitle.style.cssText = "color: var(--primary); margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border)";
+            categorySection.appendChild(categoryTitle);
+
+            for (const field of fields) {
+              if (field in data.config) {
+                categorySection.appendChild(createFieldEditor(field, data.config[field]));
+              }
+            }
+
+            configContainer.appendChild(categorySection);
+          }
+
+          showStatus("تنظیمات با موفقیت بارگذاری شد.");
+        } catch (error) {
+          showStatus(`خطا در بارگذاری تنظیمات: ${error.message}`, true);
+          configContainer.innerHTML = `<p style="color: var(--muted); text-align: center">خطا در بارگذاری تنظیمات. لطفاً توکن مدیریت را بررسی کنید.</p>`;
+        }
+      }
+
+      await loadConfig();
+    })();
+  </script>
+{% endblock %}
