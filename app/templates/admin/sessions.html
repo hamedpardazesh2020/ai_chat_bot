@@ -4,10 +4,6 @@
 
 {% block content %}
   <h2>بررسی سشن‌ها</h2>
-  <p>
-    این صفحه امکان مشاهده‌ی سشن‌های فعال و گفت‌وگوهای ذخیره‌شده را فراهم می‌کند. برای هر سشن،
-    می‌توانید پیام‌های جاری یا آرشیوشده را مشاهده کنید و از وضعیت ذخیره‌سازی مطمئن شوید.
-  </p>
 
   <section class="sessions-grid">
     <article class="card">
@@ -17,10 +13,6 @@
       </div>
       <p class="status-message" id="activeStatus"></p>
       <ul class="session-list" id="activeSessions"></ul>
-      <div class="transcript" id="activeTranscript">
-        <h3>جزئیات گفتگو</h3>
-        <div class="message-container" id="activeMessages"></div>
-      </div>
     </article>
 
     <article class="card">
@@ -35,10 +27,18 @@
       </div>
       <p class="status-message" id="historyStatus"></p>
       <ul class="session-list" id="historySessions"></ul>
-      <div class="transcript" id="historyTranscript">
-        <h3>پیام‌های ذخیره‌شده</h3>
-        <div class="message-container" id="historyMessages"></div>
-      </div>
+    </article>
+  </section>
+
+  <section class="transcripts-grid">
+    <article class="card transcript-card" id="activeTranscript">
+      <h2>جزئیات گفتگو</h2>
+      <div class="message-container" id="activeMessages"></div>
+    </article>
+
+    <article class="card transcript-card" id="historyTranscript">
+      <h2>پیام‌های ذخیره‌شده</h2>
+      <div class="message-container" id="historyMessages"></div>
     </article>
   </section>
 {% endblock %}
@@ -116,26 +116,32 @@
       color: var(--muted);
     }
 
-    .transcript {
-      margin-top: 1.5rem;
+    .transcripts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.8rem;
+      margin-top: 2rem;
+    }
+
+    .transcript-card {
       border-radius: 16px;
       border: 1px solid rgba(148, 163, 184, 0.25);
       background: #ffffff;
       padding: 1.25rem;
-      max-height: 400px;
+      max-height: 420px;
       overflow: hidden;
       display: none;
       flex-direction: column;
       gap: 1rem;
     }
 
-    .transcript.active {
+    .transcript-card.active {
       display: flex;
     }
 
-    .transcript h3 {
+    .transcript-card h2 {
       margin: 0;
-      font-size: 1.1rem;
+      font-size: 1.2rem;
       color: var(--primary-dark);
     }
 
