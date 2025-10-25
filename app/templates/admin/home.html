@@ -44,6 +44,14 @@
       </p>
       <a class="nav-button" href="{{ request.url_for('admin-ui-bypass') }}">تنظیم آی‌پی‌ها</a>
     </article>
+    <article class="card">
+      <h2>مدیریت تنظیمات برنامه</h2>
+      <p>
+        تنظیمات برنامه را به‌صورت مستقیم از پنل مدیریت مشاهده و ویرایش کنید. شامل تنظیمات ارائه‌دهندگان،
+        حافظه، Redis، ذخیره‌سازی تاریخچه و سایر پیکربندی‌های مهم سرویس.
+      </p>
+      <a class="nav-button" href="{{ request.url_for('admin-ui-config') }}">ویرایش تنظیمات</a>
+    </article>
   </section>
 {% endblock %}
 
