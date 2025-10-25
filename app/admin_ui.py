@@ -53,6 +53,16 @@ async def session_history_page(request: Request, session_id: str) -> HTMLRespons
     )
 
 
+@router.get("/history", response_class=HTMLResponse, name="admin-ui-history")
+async def history_page(request: Request) -> HTMLResponse:
+    """Render the chat history sessions page with date filtering."""
+
+    return templates.TemplateResponse(
+        "admin/history.html",
+        {"request": request, "page_id": "history"},
+    )
+
+
 @router.get("/metrics", response_class=HTMLResponse, name="admin-ui-metrics")
 async def metrics_page(request: Request) -> HTMLResponse:
     """Render the in-app metrics visualisation."""

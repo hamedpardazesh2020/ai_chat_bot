@@ -271,6 +271,7 @@
         <nav>
           <a href="{{ request.url_for('admin-ui-home') }}" class="{% if page_id == 'home' %}active{% endif %}">خانه</a>
           <a href="{{ request.url_for('admin-ui-active-sessions') }}" class="{% if page_id == 'active-sessions' or page_id == 'session-history' %}active{% endif %}">سشن‌های فعال</a>
+          <a href="{{ request.url_for('admin-ui-history') }}" class="{% if page_id == 'history' %}active{% endif %}">تاریخچه گفتگوها</a>
           <a href="{{ request.url_for('admin-ui-metrics') }}" class="{% if page_id == 'metrics' %}active{% endif %}">متریک‌ها</a>
           <a href="{{ request.url_for('admin-ui-runtime') }}" class="{% if page_id == 'runtime' %}active{% endif %}">اطلاعات سرویس</a>
           <a href="{{ request.url_for('admin-ui-bypass') }}" class="{% if page_id == 'bypass' %}active{% endif %}">مدیریت آی‌پی‌ها</a>
