@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.agents.manager import ProviderManager
 from app.agents.providers.unconfigured import UnconfiguredChatProvider
 from app.config import Settings
+from app.history_store import NoOpHistoryStore
 from app.memory import InMemoryChatMemory
 from app.runtime import build_runtime_report
 
@@ -20,11 +21,15 @@ def test_build_runtime_report_basic_snapshot() -> None:
     manager.register(provider)
     manager.set_default(provider.name)
     memory = InMemoryChatMemory(default_limit=settings.memory_default, max_limit=settings.memory_max)
+    history = NoOpHistoryStore()
 
-    report = build_runtime_report(settings=settings, manager=manager, memory_backend=memory)
+    report = build_runtime_report(
+        settings=settings, manager=manager, memory_backend=memory, history_backend=history
+    )
 
     provider_info = report["provider"]
     memory_info = report["memory"]
+    history_info = report["history"]
 
     assert provider_info["default"] == provider.name
     assert provider_info["uses_openrouter"] is True
@@ -36,6 +41,9 @@ def test_build_runtime_report_basic_snapshot() -> None:
     assert memory_info["backend"] == "InMemoryChatMemory"
     assert memory_info["default_limit"] == 12
     assert memory_info["max_limit"] == 24
+    assert history_info["backend"] == "NoOpHistoryStore"
+    assert history_info["configured_backend"] == "none"
+    assert history_info["enabled"] is False
 
 
 def test_build_runtime_report_with_mcp_servers() -> None:
@@ -51,8 +59,11 @@ def test_build_runtime_report_with_mcp_servers() -> None:
     manager.register(provider)
     manager.set_default(provider.name)
     memory = InMemoryChatMemory(default_limit=settings.memory_default, max_limit=settings.memory_max)
+    history = NoOpHistoryStore()
 
-    report = build_runtime_report(settings=settings, manager=manager, memory_backend=memory)
+    report = build_runtime_report(
+        settings=settings, manager=manager, memory_backend=memory, history_backend=history
+    )
 
     provider_info = report["provider"]
 

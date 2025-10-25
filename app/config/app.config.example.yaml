@@ -29,6 +29,22 @@ rate_burst: 5
 memory_default: 10
 memory_max: 50
 
+# History storage
+history_storage_backend: none
+history_namespace: chat_history
+history_mysql_host: localhost
+history_mysql_port: 3306
+history_mysql_user: null
+history_mysql_password: null
+history_mysql_database: null
+history_mysql_session_table: chat_sessions
+history_mysql_message_table: chat_messages
+history_mongodb_uri: mongodb://localhost:27017
+history_mongodb_database: chat_history
+history_mongodb_session_collection: chat_sessions
+history_mongodb_message_collection: chat_messages
+history_redis_url: null
+
 # Observability and timeouts
 metrics_enabled: true
 log_level: INFO

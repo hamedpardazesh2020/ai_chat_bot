@@ -23,6 +23,7 @@ from .dependencies import (
     get_provider_manager,
     get_rate_limit_bypass_store,
     get_rate_limiter,
+    get_history_store,
 )
 from .errors import register_exception_handlers
 from .logging_utils import configure_logging
@@ -152,9 +153,14 @@ def create_app() -> FastAPI:
         unconfigured = UnconfiguredChatProvider()
         _register_provider(unconfigured)
 
-    runtime_report = build_runtime_report(settings=settings, manager=manager)
+    runtime_report = build_runtime_report(
+        settings=settings,
+        manager=manager,
+        history_backend=get_history_store(),
+    )
     provider_info = runtime_report["provider"]
     memory_info = runtime_report["memory"]
+    history_info = runtime_report["history"]
     log_payload = {
         "default_provider": provider_info["default"],
         "available_providers": ",".join(provider_info["available"]),
@@ -167,6 +173,10 @@ def create_app() -> FastAPI:
         "memory_backend": memory_info["backend"],
         "memory_default_limit": memory_info["default_limit"],
         "memory_max_limit": memory_info["max_limit"],
+        "history_backend": history_info["backend"],
+        "history_configured_backend": history_info["configured_backend"],
+        "history_enabled": history_info["enabled"],
+        "history_namespace": history_info["namespace"],
     }
     if provider_info.get("default_model"):
         log_payload["llm_default_model"] = provider_info["default_model"]

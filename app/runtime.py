@@ -5,7 +5,7 @@ from typing import Any, Mapping, MutableMapping
 
 from .agents.manager import ProviderManager
 from .config import Settings, get_settings
-from .dependencies import get_chat_memory, get_provider_manager
+from .dependencies import get_chat_memory, get_history_store, get_provider_manager
 
 
 _MIN_MCP_SERVERS: int = 1
@@ -16,12 +16,14 @@ def build_runtime_report(
     settings: Settings | None = None,
     manager: ProviderManager | None = None,
     memory_backend: Any | None = None,
+    history_backend: Any | None = None,
 ) -> Mapping[str, Any]:
     """Return a structured snapshot describing the active runtime configuration."""
 
     resolved_settings = settings or get_settings()
     resolved_manager = manager or get_provider_manager()
     resolved_memory = memory_backend or get_chat_memory()
+    resolved_history = history_backend or get_history_store()
 
     available_providers = sorted(resolved_manager.list_providers())
     default_provider = resolved_manager.default
@@ -56,9 +58,17 @@ def build_runtime_report(
         "max_limit": resolved_settings.memory_max,
     }
 
+    history_section: MutableMapping[str, Any] = {
+        "configured_backend": resolved_settings.history_storage_backend,
+        "backend": resolved_history.__class__.__name__,
+        "enabled": resolved_settings.history_storage_enabled,
+        "namespace": resolved_settings.history_namespace,
+    }
+
     return {
         "provider": provider_section,
         "memory": memory_section,
+        "history": history_section,
     }
 
 

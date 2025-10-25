@@ -16,12 +16,14 @@ from app.sessions import (
 )
 from app.dependencies import (
     get_chat_memory,
+    get_history_store,
     get_metrics_collector,
     get_provider_manager,
     get_rate_limit_bypass_store,
     get_rate_limiter,
     get_session_store,
     set_chat_memory,
+    set_history_store,
     set_metrics_collector,
     set_provider_manager,
     set_rate_limit_bypass_store,
@@ -37,6 +39,7 @@ from app.agents.manager import (
     ChatResponse,
     ProviderManager,
 )
+from app.history_store import NoOpHistoryStore
 
 
 class _SilentProvider:
@@ -90,6 +93,7 @@ def test_session_lifecycle_endpoints_manage_store_and_memory() -> None:
     async def _run() -> None:
         original_store = get_session_store()
         original_memory = get_chat_memory()
+        original_history = get_history_store()
         original_limiter = get_rate_limiter()
         original_bypass = get_rate_limit_bypass_store()
         original_metrics = get_metrics_collector()
@@ -97,6 +101,7 @@ def test_session_lifecycle_endpoints_manage_store_and_memory() -> None:
 
         store = InMemorySessionStore()
         memory = InMemoryChatMemory(default_limit=5)
+        history = NoOpHistoryStore()
         limiter = InMemoryRateLimiter(rate=1000, capacity=1000)
         bypass = RateLimitBypassStore()
         metrics = MetricsCollector()
@@ -107,6 +112,7 @@ def test_session_lifecycle_endpoints_manage_store_and_memory() -> None:
 
         set_session_store(store)
         set_chat_memory(memory)
+        set_history_store(history)
         set_rate_limiter(limiter)
         set_rate_limit_bypass_store(bypass)
         set_metrics_collector(metrics)
@@ -139,6 +145,7 @@ def test_session_lifecycle_endpoints_manage_store_and_memory() -> None:
         finally:
             set_session_store(original_store)
             set_chat_memory(original_memory)
+            set_history_store(original_history)
             set_provider_manager(original_manager)
             set_rate_limiter(original_limiter)
             set_rate_limit_bypass_store(original_bypass)
@@ -151,6 +158,7 @@ def test_missing_message_content_returns_readable_validation_error() -> None:
     async def _run() -> None:
         original_store = get_session_store()
         original_memory = get_chat_memory()
+        original_history = get_history_store()
         original_limiter = get_rate_limiter()
         original_bypass = get_rate_limit_bypass_store()
         original_metrics = get_metrics_collector()
@@ -158,6 +166,7 @@ def test_missing_message_content_returns_readable_validation_error() -> None:
 
         store = InMemorySessionStore()
         memory = InMemoryChatMemory(default_limit=5)
+        history = NoOpHistoryStore()
         limiter = InMemoryRateLimiter(rate=1000, capacity=1000)
         bypass = RateLimitBypassStore()
         metrics = MetricsCollector()
@@ -168,6 +177,7 @@ def test_missing_message_content_returns_readable_validation_error() -> None:
 
         set_session_store(store)
         set_chat_memory(memory)
+        set_history_store(history)
         set_rate_limiter(limiter)
         set_rate_limit_bypass_store(bypass)
         set_metrics_collector(metrics)
@@ -197,6 +207,7 @@ def test_missing_message_content_returns_readable_validation_error() -> None:
         finally:
             set_session_store(original_store)
             set_chat_memory(original_memory)
+            set_history_store(original_history)
             set_provider_manager(original_manager)
             set_rate_limiter(original_limiter)
             set_rate_limit_bypass_store(original_bypass)
