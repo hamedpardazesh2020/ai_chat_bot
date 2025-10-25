@@ -1,0 +1,326 @@
+{% extends "admin/base.html" %}
+
+{% block title %}سشن‌های فعال{% endblock %}
+
+{% block content %}
+  <h2>مدیریت سشن‌های فعال</h2>
+
+  <section class="filter-section">
+    <div class="card filter-card">
+      <h3>فیلتر بر اساس بازه زمانی</h3>
+      <form id="dateFilterForm" class="filter-form">
+        <div class="form-group">
+          <label for="startDate">از تاریخ:</label>
+          <input type="datetime-local" id="startDate" name="start_date" />
+        </div>
+        <div class="form-group">
+          <label for="endDate">تا تاریخ:</label>
+          <input type="datetime-local" id="endDate" name="end_date" />
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="primary">اعمال فیلتر</button>
+          <button type="button" class="secondary" id="clearFilter">پاک کردن فیلتر</button>
+          <button type="button" class="primary" id="refreshSessions">به‌روزرسانی</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="sessions-section">
+    <div class="card">
+      <div class="header">
+        <h2>لیست سشن‌های فعال</h2>
+        <span class="count-badge" id="sessionCount">0 سشن</span>
+      </div>
+      <p class="status-message" id="sessionStatus"></p>
+      <div class="session-grid" id="sessionList"></div>
+    </div>
+  </section>
+{% endblock %}
+
+{% block extra_js %}
+  <style>
+    .filter-section {
+      margin-bottom: 2rem;
+    }
+
+    .filter-card {
+      background: var(--surface-strong);
+      border-radius: 20px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      padding: 1.75rem;
+    }
+
+    .filter-card h3 {
+      margin: 0 0 1.5rem 0;
+      font-size: 1.3rem;
+      color: var(--primary);
+    }
+
+    .filter-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      align-items: flex-end;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .form-group label {
+      font-weight: 600;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .form-group input {
+      padding: 0.6rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      background: var(--surface-strong);
+      color: var(--text);
+      transition: border-color 0.2s ease;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .sessions-section .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .sessions-section .header h2 {
+      margin: 0;
+      font-size: 1.35rem;
+      color: var(--primary);
+    }
+
+    .count-badge {
+      background: rgba(37, 99, 235, 0.12);
+      color: var(--primary-dark);
+      padding: 0.4rem 1rem;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .session-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-top: 1.5rem;
+    }
+
+    .session-card {
+      background: #f8fbff;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 16px;
+      padding: 1.25rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .session-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+      border-color: rgba(37, 99, 235, 0.4);
+    }
+
+    .session-card .session-id {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--primary-dark);
+      margin-bottom: 0.75rem;
+      word-break: break-all;
+    }
+
+    .session-card .session-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .session-card .session-info .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .session-card .session-info .info-label {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--muted);
+    }
+
+    .empty-state svg {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    @media (max-width: 768px) {
+      .filter-form {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .form-group {
+        min-width: 100%;
+      }
+
+      .form-actions {
+        width: 100%;
+      }
+
+      .form-actions button {
+        flex: 1;
+      }
+    }
+  </style>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const sessionList = document.getElementById("sessionList");
+      const sessionStatus = document.getElementById("sessionStatus");
+      const sessionCount = document.getElementById("sessionCount");
+      const dateFilterForm = document.getElementById("dateFilterForm");
+      const startDateInput = document.getElementById("startDate");
+      const endDateInput = document.getElementById("endDate");
+      const clearFilterBtn = document.getElementById("clearFilter");
+      const refreshBtn = document.getElementById("refreshSessions");
+
+      let currentStartDate = null;
+      let currentEndDate = null;
+
+      function setStatus(message, isError = false) {
+        sessionStatus.textContent = message;
+        sessionStatus.classList.toggle("error", Boolean(isError));
+      }
+
+      function formatDate(value) {
+        try {
+          return new Date(value).toLocaleString("fa-IR");
+        } catch (error) {
+          return value;
+        }
+      }
+
+      function renderEmptyState() {
+        sessionList.innerHTML = `
+          <div class="empty-state">
+            <p style="font-size: 1.1rem; margin: 0;">هیچ سشن فعالی یافت نشد</p>
+          </div>
+        `;
+      }
+
+      async function loadSessions() {
+        setStatus("در حال دریافت سشن‌ها...");
+        sessionList.innerHTML = "";
+        sessionCount.textContent = "0 سشن";
+
+        try {
+          let url = "/admin/sessions";
+          const params = new URLSearchParams();
+
+          if (currentStartDate) {
+            params.append("start_date", currentStartDate);
+          }
+          if (currentEndDate) {
+            params.append("end_date", currentEndDate);
+          }
+
+          if (params.toString()) {
+            url += "?" + params.toString();
+          }
+
+          const sessions = await AdminUI.adminFetch(url);
+
+          if (!sessions.length) {
+            renderEmptyState();
+            setStatus("هیچ سشن فعالی یافت نشد.");
+            return;
+          }
+
+          setStatus(`${sessions.length} سشن فعال یافت شد.`);
+          sessionCount.textContent = `${sessions.length} سشن`;
+
+          sessions.forEach((session) => {
+            const card = document.createElement("div");
+            card.className = "session-card";
+            card.innerHTML = `
+              <div class="session-id">${session.id}</div>
+              <div class="session-info">
+                <div class="info-row">
+                  <span class="info-label">ایجاد شده:</span>
+                  <span>${formatDate(session.created_at)}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">ارائه‌دهنده:</span>
+                  <span>${session.provider || "-"}</span>
+                </div>
+              </div>
+            `;
+
+            card.addEventListener("click", () => {
+              window.location.href = `/admin/ui/sessions/${session.id}/history`;
+            });
+
+            sessionList.appendChild(card);
+          });
+        } catch (error) {
+          setStatus("خطا در دریافت سشن‌ها: " + error.message, true);
+          renderEmptyState();
+        }
+      }
+
+      dateFilterForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        currentStartDate = startDateInput.value || null;
+        currentEndDate = endDateInput.value || null;
+        loadSessions();
+      });
+
+      clearFilterBtn.addEventListener("click", () => {
+        startDateInput.value = "";
+        endDateInput.value = "";
+        currentStartDate = null;
+        currentEndDate = null;
+        loadSessions();
+      });
+
+      refreshBtn.addEventListener("click", () => {
+        loadSessions();
+      });
+
+      // بارگذاری اولیه
+      loadSessions();
+    });
+  </script>
+{% endblock %}

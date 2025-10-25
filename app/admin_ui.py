@@ -25,11 +25,31 @@ async def home_page(request: Request) -> HTMLResponse:
 
 @router.get("/sessions", response_class=HTMLResponse, name="admin-ui-sessions")
 async def sessions_page(request: Request) -> HTMLResponse:
-    """Render the session management dashboard."""
+    """Render the session management dashboard (legacy - redirects to active sessions)."""
 
     return templates.TemplateResponse(
         "admin/sessions.html",
         {"request": request, "page_id": "sessions"},
+    )
+
+
+@router.get("/active-sessions", response_class=HTMLResponse, name="admin-ui-active-sessions")
+async def active_sessions_page(request: Request) -> HTMLResponse:
+    """Render the active sessions page with time-based filtering."""
+
+    return templates.TemplateResponse(
+        "admin/active_sessions.html",
+        {"request": request, "page_id": "active-sessions"},
+    )
+
+
+@router.get("/sessions/{session_id}/history", response_class=HTMLResponse, name="admin-ui-session-history")
+async def session_history_page(request: Request, session_id: str) -> HTMLResponse:
+    """Render the session chat history page."""
+
+    return templates.TemplateResponse(
+        "admin/session_history.html",
+        {"request": request, "page_id": "session-history", "session_id": session_id},
     )
 
 

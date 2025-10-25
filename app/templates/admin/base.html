@@ -39,7 +39,7 @@
       }
 
       body.header-collapsed header.topbar {
-        justify-content: flex-start;
+        justify-content: flex-end;
         padding-inline: 1rem;
       }
 
@@ -267,6 +267,21 @@
   </head>
   <body data-page="{{ page_id | default('home') }}" class="header-collapsed">
     <header class="topbar">
+      <div class="topbar-main" id="topbarMain">
+        <nav>
+          <a href="{{ request.url_for('admin-ui-home') }}" class="{% if page_id == 'home' %}active{% endif %}">خانه</a>
+          <a href="{{ request.url_for('admin-ui-active-sessions') }}" class="{% if page_id == 'active-sessions' or page_id == 'session-history' %}active{% endif %}">سشن‌های فعال</a>
+          <a href="{{ request.url_for('admin-ui-metrics') }}" class="{% if page_id == 'metrics' %}active{% endif %}">متریک‌ها</a>
+          <a href="{{ request.url_for('admin-ui-runtime') }}" class="{% if page_id == 'runtime' %}active{% endif %}">اطلاعات سرویس</a>
+          <a href="{{ request.url_for('admin-ui-bypass') }}" class="{% if page_id == 'bypass' %}active{% endif %}">مدیریت آی‌پی‌ها</a>
+          <a href="{{ request.url_for('admin-ui-config') }}" class="{% if page_id == 'config' %}active{% endif %}">تنظیمات</a>
+          <a href="{{ request.url_for('admin-ui-token') }}" class="{% if page_id == 'token' %}active{% endif %}">توکن ادمین</a>
+        </nav>
+        <div class="brand">
+          <h1>پنل مدیریت سرویس چت</h1>
+          <p>دسترسی سریع به ابزارهای نظارتی و عملیاتی سرویس</p>
+        </div>
+      </div>
       <button
         type="button"
         class="topbar-toggle"
@@ -277,21 +292,6 @@
       >
         ☰ منو
       </button>
-      <div class="topbar-main" id="topbarMain">
-        <div class="brand">
-          <h1>پنل مدیریت سرویس چت</h1>
-          <p>دسترسی سریع به ابزارهای نظارتی و عملیاتی سرویس</p>
-        </div>
-        <nav>
-          <a href="{{ request.url_for('admin-ui-home') }}" class="{% if page_id == 'home' %}active{% endif %}">خانه</a>
-          <a href="{{ request.url_for('admin-ui-sessions') }}" class="{% if page_id == 'sessions' %}active{% endif %}">سشن‌ها و گفتگوها</a>
-          <a href="{{ request.url_for('admin-ui-metrics') }}" class="{% if page_id == 'metrics' %}active{% endif %}">متریک‌ها</a>
-          <a href="{{ request.url_for('admin-ui-runtime') }}" class="{% if page_id == 'runtime' %}active{% endif %}">اطلاعات سرویس</a>
-          <a href="{{ request.url_for('admin-ui-bypass') }}" class="{% if page_id == 'bypass' %}active{% endif %}">مدیریت آی‌پی‌ها</a>
-          <a href="{{ request.url_for('admin-ui-config') }}" class="{% if page_id == 'config' %}active{% endif %}">تنظیمات</a>
-          <a href="{{ request.url_for('admin-ui-token') }}" class="{% if page_id == 'token' %}active{% endif %}">توکن ادمین</a>
-        </nav>
-      </div>
     </header>
 
     <main class="content">
