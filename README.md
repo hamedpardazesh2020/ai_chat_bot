@@ -332,8 +332,10 @@ body:
 
 ### Structured logging & metrics
 Each request is logged with a unique `X-Request-ID`. Metrics can be harvested by
-polling `/metrics` and include aggregated counters for requests, responses, and
-errors.
+polling `/metrics` and include aggregated counters for chat activity (session
+creation and message posts), responses, and errors. Introspection endpoints such
+as `/metrics` and `/health` are intentionally excluded from the counters so the
+statistics focus solely on live conversation traffic.
 
 #### Disabling metrics collection
 Set the environment variable `METRICS_ENABLED=false` (or the equivalent setting
