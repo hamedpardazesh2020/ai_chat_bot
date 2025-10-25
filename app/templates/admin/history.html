@@ -1,19 +1,37 @@
 {% extends "admin/base.html" %}
 
-{% block title %}سشن‌های فعال{% endblock %}
+{% block title %}تاریخچه گفتگوها{% endblock %}
 
 {% block content %}
-  <h2>مدیریت سشن‌های فعال</h2>
-  <p style="color: var(--muted); margin-bottom: 1.5rem;">سشن‌های فعال در Redis ذخیره می‌شوند و نیاز به فیلتر تاریخی ندارند.</p>
+  <h2>تاریخچه گفتگوها</h2>
+  <p style="color: var(--muted); margin-bottom: 1.5rem;">سشن‌های ذخیره شده در MySQL/Storage با قابلیت فیلتر بر اساس تاریخ.</p>
+
+  <section class="filter-section">
+    <div class="card filter-card">
+      <h3>فیلتر بر اساس بازه زمانی</h3>
+      <form id="dateFilterForm" class="filter-form">
+        <div class="form-group">
+          <label for="startDate">از تاریخ:</label>
+          <input type="datetime-local" id="startDate" name="start_date" />
+        </div>
+        <div class="form-group">
+          <label for="endDate">تا تاریخ:</label>
+          <input type="datetime-local" id="endDate" name="end_date" />
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="primary">اعمال فیلتر</button>
+          <button type="button" class="secondary" id="clearFilter">پاک کردن فیلتر</button>
+          <button type="button" class="primary" id="refreshSessions">به‌روزرسانی</button>
+        </div>
+      </form>
+    </div>
+  </section>
 
   <section class="sessions-section">
     <div class="card">
       <div class="header">
-        <h2>لیست سشن‌های فعال</h2>
+        <h2>لیست سشن‌های ذخیره شده</h2>
         <span class="count-badge" id="sessionCount">0 سشن</span>
-      </div>
-      <div class="header-actions">
-        <button type="button" class="primary" id="refreshSessions">به‌روزرسانی</button>
       </div>
       <p class="status-message" id="sessionStatus"></p>
       <div class="session-grid" id="sessionList"></div>
@@ -23,16 +41,71 @@
 
 {% block extra_js %}
   <style>
+    .filter-section {
+      margin-bottom: 2rem;
+    }
+
+    .filter-card {
+      background: var(--surface-strong);
+      border-radius: 20px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      padding: 1.75rem;
+    }
+
+    .filter-card h3 {
+      margin: 0 0 1.5rem 0;
+      font-size: 1.3rem;
+      color: var(--primary);
+    }
+
+    .filter-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      align-items: flex-end;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .form-group label {
+      font-weight: 600;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .form-group input {
+      padding: 0.6rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      background: var(--surface-strong);
+      color: var(--text);
+      transition: border-color 0.2s ease;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
     .sessions-section .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 1rem;
-      margin-bottom: 1rem;
-    }
-
-    .header-actions {
-      margin-top: 1rem;
       margin-bottom: 1rem;
     }
 
@@ -138,7 +211,14 @@
       const sessionList = document.getElementById("sessionList");
       const sessionStatus = document.getElementById("sessionStatus");
       const sessionCount = document.getElementById("sessionCount");
+      const dateFilterForm = document.getElementById("dateFilterForm");
+      const startDateInput = document.getElementById("startDate");
+      const endDateInput = document.getElementById("endDate");
+      const clearFilterBtn = document.getElementById("clearFilter");
       const refreshBtn = document.getElementById("refreshSessions");
+
+      let currentStartDate = null;
+      let currentEndDate = null;
 
       function setStatus(message, isError = false) {
         sessionStatus.textContent = message;
@@ -156,7 +236,7 @@
       function renderEmptyState() {
         sessionList.innerHTML = `
           <div class="empty-state">
-            <p style="font-size: 1.1rem; margin: 0;">هیچ سشن فعالی یافت نشد</p>
+            <p style="font-size: 1.1rem; margin: 0;">هیچ سشنی یافت نشد</p>
           </div>
         `;
       }
@@ -167,15 +247,31 @@
         sessionCount.textContent = "0 سشن";
 
         try {
-          const sessions = await AdminUI.adminFetch("/admin/sessions");
+          let url = "/admin/history/sessions";
+          const params = new URLSearchParams();
+          params.append("limit", "200");
+
+          if (currentStartDate) {
+            params.append("start_date", currentStartDate);
+          }
+          if (currentEndDate) {
+            params.append("end_date", currentEndDate);
+          }
+
+          if (params.toString()) {
+            url += "?" + params.toString();
+          }
+
+          const response = await AdminUI.adminFetch(url);
+          const sessions = response.sessions || [];
 
           if (!sessions.length) {
             renderEmptyState();
-            setStatus("هیچ سشن فعالی یافت نشد.");
+            setStatus("هیچ سشنی یافت نشد.");
             return;
           }
 
-          setStatus(`${sessions.length} سشن فعال یافت شد.`);
+          setStatus(`${sessions.length} سشن یافت شد.`);
           sessionCount.textContent = `${sessions.length} سشن`;
 
           sessions.forEach((session) => {
@@ -239,6 +335,21 @@
           renderEmptyState();
         }
       }
+
+      dateFilterForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        currentStartDate = startDateInput.value || null;
+        currentEndDate = endDateInput.value || null;
+        loadSessions();
+      });
+
+      clearFilterBtn.addEventListener("click", () => {
+        startDateInput.value = "";
+        endDateInput.value = "";
+        currentStartDate = null;
+        currentEndDate = null;
+        loadSessions();
+      });
 
       refreshBtn.addEventListener("click", () => {
         loadSessions();

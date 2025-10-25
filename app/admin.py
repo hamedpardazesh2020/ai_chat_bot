@@ -288,31 +288,19 @@ async def runtime_diagnostics(_: str = Depends(require_admin_token)) -> RuntimeD
     "/sessions",
     response_model=list[ActiveSessionSummary],
     summary="List active chat sessions",
-    response_description="Active sessions currently stored in memory.",
+    response_description="Active sessions currently stored in memory (Redis).",
 )
 async def list_active_sessions(
-    start_date: datetime | None = None,
-    end_date: datetime | None = None,
     store: InMemorySessionStore = Depends(get_session_store),
     _: str = Depends(require_admin_token),
 ) -> list[ActiveSessionSummary]:
-    """Return the currently active sessions tracked by the runtime.
+    """Return the currently active sessions tracked by the runtime (stored in Redis).
 
-    Optionally filter by creation date range:
-    - start_date: Only return sessions created on or after this datetime
-    - end_date: Only return sessions created on or before this datetime
+    Active sessions do not support date filtering as they are temporary in-memory sessions.
+    For historical session queries with date filtering, use the /admin/history/sessions endpoint.
     """
 
     sessions = await store.list_sessions()
-
-    # Apply date filtering if provided
-    filtered_sessions = []
-    for session in sessions:
-        if start_date and session.created_at < start_date:
-            continue
-        if end_date and session.created_at > end_date:
-            continue
-        filtered_sessions.append(session)
 
     return [
         ActiveSessionSummary(
@@ -323,7 +311,7 @@ async def list_active_sessions(
             created_at=session.created_at,
             metadata=dict(session.metadata),
         )
-        for session in filtered_sessions
+        for session in sessions
     ]
 
 
@@ -361,18 +349,35 @@ async def get_active_session_messages(
     "/history/sessions",
     response_model=HistorySessionsResponse,
     summary="List stored chat sessions",
-    response_description="Sessions persisted by the configured history backend.",
+    response_description="Sessions persisted by the configured history backend (MySQL/Storage).",
 )
 async def list_history_sessions(
     limit: int = 50,
     offset: int = 0,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
     history_store: HistoryStore = Depends(get_history_store),
     _: str = Depends(require_admin_token),
 ) -> HistorySessionsResponse:
-    """Return a paginated collection of persisted chat sessions."""
+    """Return a paginated collection of persisted chat sessions.
+
+    Optionally filter by creation date range:
+    - start_date: Only return sessions created on or after this datetime
+    - end_date: Only return sessions created on or before this datetime
+    """
 
     limit, offset = _validate_pagination(limit, offset)
     sessions = await history_store.list_sessions(limit=limit, offset=offset)
+
+    # Apply date filtering if provided
+    filtered_sessions = []
+    for session in sessions:
+        if start_date and session.created_at < start_date:
+            continue
+        if end_date and session.created_at > end_date:
+            continue
+        filtered_sessions.append(session)
+
     return HistorySessionsResponse(
         sessions=[
             HistorySessionSummary(
@@ -383,11 +388,11 @@ async def list_history_sessions(
                 created_at=session.created_at,
                 metadata=dict(session.metadata),
             )
-            for session in sessions
+            for session in filtered_sessions
         ],
         limit=limit,
         offset=offset,
-        count=len(sessions),
+        count=len(filtered_sessions),
     )
 
 

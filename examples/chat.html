@@ -317,11 +317,23 @@
       <details>
         <summary>تنظیمات پیشرفته سشن</summary>
         <label>
+          نام و نام خانوادگی (اختیاری)
+          <input id="userName" type="text" placeholder="نام کامل خود را وارد کنید" />
+        </label>
+        <label>
+          شماره موبایل (اختیاری)
+          <input id="userMobile" type="tel" placeholder="09123456789" />
+        </label>
+        <label>
+          ایمیل (اختیاری)
+          <input id="userEmail" type="email" placeholder="example@email.com" />
+        </label>
+        <label>
           سقف حافظه‌ی سشن (تعداد پیام)
           <input id="memoryLimit" type="number" min="1" placeholder="مثلاً 20" />
         </label>
         <label>
-          متادیتا (JSON اختیاری)
+          متادیتای اضافی (JSON اختیاری)
           <textarea id="metadata" placeholder='{"topic":"demo"}'></textarea>
         </label>
       </details>
@@ -369,6 +381,9 @@
 
   <script>
     const baseUrlInput = document.getElementById('baseUrl');
+    const userNameInput = document.getElementById('userName');
+    const userMobileInput = document.getElementById('userMobile');
+    const userEmailInput = document.getElementById('userEmail');
     const memoryLimitInput = document.getElementById('memoryLimit');
     const metadataInput = document.getElementById('metadata');
     const createSessionBtn = document.getElementById('createSession');
@@ -485,6 +500,21 @@
       } catch (error) {
         alert(error.message);
         return;
+      }
+
+      // اضافه کردن فیلدهای کاربر به metadata
+      const userName = userNameInput.value.trim();
+      const userMobile = userMobileInput.value.trim();
+      const userEmail = userEmailInput.value.trim();
+
+      if (userName) {
+        metadata.name = userName;
+      }
+      if (userMobile) {
+        metadata.mobile = userMobile;
+      }
+      if (userEmail) {
+        metadata.email = userEmail;
       }
 
       setLoading(true, 'در حال ساخت سشن جدید');
