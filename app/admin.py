@@ -528,4 +528,27 @@ async def update_configuration(
     return {"message": f"Configuration field '{update.field}' updated successfully."}
 
 
+@router.post(
+    "/restart",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Restart application",
+    response_description="Confirmation that the application restart has been initiated.",
+)
+async def restart_application(_: str = Depends(require_admin_token)) -> dict[str, str]:
+    """Trigger application restart by exiting the process."""
+    import os
+    import signal
+
+    # Send termination signal to exit gracefully
+    # Docker will automatically restart the container
+    def shutdown():
+        os.kill(os.getpid(), signal.SIGTERM)
+
+    # Schedule shutdown after response is sent
+    import asyncio
+    asyncio.create_task(asyncio.sleep(0.5)).add_done_callback(lambda _: shutdown())
+
+    return {"message": "Application restart initiated. The service will be back shortly."}
+
+
 __all__ = ["require_admin_token", "router"]

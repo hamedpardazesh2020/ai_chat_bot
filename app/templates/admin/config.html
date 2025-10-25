@@ -16,6 +16,18 @@
       </p>
     </div>
 
+    <div style="margin: 1.5rem 0; padding: 1.5rem; background: linear-gradient(135deg, #fef3c7 0%, #fbbf24 100%); border-radius: 12px; border: 2px solid #f59e0b; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1)">
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem">
+        <div>
+          <h3 style="margin: 0 0 0.5rem 0; color: #92400e; font-size: 1.1rem">ریستارت اپلیکیشن</h3>
+          <p style="margin: 0; color: #78350f; font-size: 0.9rem">برای اعمال تغییرات تنظیمات، اپلیکیشن را مجدداً راه‌اندازی کنید.</p>
+        </div>
+        <button id="restartBtn" class="primary" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; padding: 0.8rem 1.8rem; font-weight: 600; border: none; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.3); transition: all 0.3s ease">
+          🔄 ریستارت اپلیکیشن
+        </button>
+      </div>
+    </div>
+
     <div id="configStatus" class="status-message" style="margin: 1rem 0"></div>
 
     <div id="configContainer" style="margin-top: 2rem">
@@ -72,11 +84,50 @@
       const configContainer = document.getElementById("configContainer");
       const configStatus = document.getElementById("configStatus");
       const configFilePath = document.getElementById("configFilePath");
+      const restartBtn = document.getElementById("restartBtn");
 
       function showStatus(message, isError = false) {
         if (!configStatus) return;
         configStatus.textContent = message;
         configStatus.classList.toggle("error", Boolean(isError));
+      }
+
+      // Handle restart button click
+      if (restartBtn) {
+        restartBtn.addEventListener("click", async () => {
+          if (!confirm("آیا مطمئن هستید که می‌خواهید اپلیکیشن را ریستارت کنید؟\n\nاپلیکیشن به مدت چند ثانیه در دسترس نخواهد بود.")) {
+            return;
+          }
+
+          try {
+            restartBtn.disabled = true;
+            restartBtn.textContent = "🔄 در حال ریستارت...";
+            restartBtn.style.opacity = "0.7";
+
+            await window.AdminUI.adminFetch("/admin/restart", {
+              method: "POST",
+            });
+
+            showStatus("ریستارت اپلیکیشن آغاز شد. لطفاً چند ثانیه صبر کنید...");
+
+            // Show countdown and auto-reload
+            let countdown = 5;
+            const countdownInterval = setInterval(() => {
+              countdown--;
+              showStatus(`ریستارت اپلیکیشن آغاز شد. صفحه در ${countdown} ثانیه دیگر بازنشانی می‌شود...`);
+              if (countdown <= 0) {
+                clearInterval(countdownInterval);
+                window.location.reload();
+              }
+            }, 1000);
+
+          } catch (error) {
+            showStatus(`خطا در ریستارت اپلیکیشن: ${error.message}`, true);
+            restartBtn.textContent = "🔄 ریستارت اپلیکیشن";
+            restartBtn.disabled = false;
+            restartBtn.style.opacity = "1";
+          }
+        });
       }
 
       function parseValue(valueStr, currentValue) {
