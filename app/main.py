@@ -31,6 +31,7 @@ from .dependencies import (
 from .errors import register_exception_handlers
 from .logging_utils import configure_logging
 from .observability import MetricsCollector
+from .runtime import build_runtime_report
 from .rate_limiter import RateLimitMiddleware
 
 META_TAG: Final[str] = "meta"
@@ -105,6 +106,7 @@ def create_app() -> FastAPI:
     )
     register_exception_handlers(application)
     request_logger = logging.getLogger("app.requests")
+    startup_logger = logging.getLogger("app.startup")
     application.add_middleware(
         RateLimitMiddleware,
         limiter=get_rate_limiter(),
@@ -176,6 +178,29 @@ def create_app() -> FastAPI:
         )
         unconfigured = UnconfiguredChatProvider()
         _register_provider(unconfigured)
+
+    runtime_report = build_runtime_report(settings=settings, manager=manager)
+    provider_info = runtime_report["provider"]
+    memory_info = runtime_report["memory"]
+    log_payload = {
+        "default_provider": provider_info["default"],
+        "available_providers": ",".join(provider_info["available"]),
+        "llm_provider": provider_info["llm_provider"],
+        "uses_openrouter": provider_info["uses_openrouter"],
+        "mcp_servers_configured": provider_info["mcp_servers_configured"],
+        "mcp_servers_active": provider_info["mcp_servers_active"],
+        "mcp_server_names": ",".join(provider_info["mcp_server_names"]),
+        "mcp_servers_required_minimum": provider_info["mcp_servers_required_minimum"],
+        "memory_backend": memory_info["backend"],
+        "memory_default_limit": memory_info["default_limit"],
+        "memory_max_limit": memory_info["max_limit"],
+    }
+    if provider_info.get("default_model"):
+        log_payload["llm_default_model"] = provider_info["default_model"]
+    if provider_info.get("openrouter_base_url"):
+        log_payload["openrouter_base_url"] = provider_info["openrouter_base_url"]
+
+    startup_logger.info("runtime_configuration_resolved", extra=log_payload)
 
     @application.middleware("http")
     async def _logging_middleware(

@@ -151,6 +151,19 @@
         color: #ff8a8a;
       }
 
+      .runtime-output {
+        margin-top: 1rem;
+        background: rgba(0, 0, 0, 0.35);
+        border-radius: 14px;
+        padding: 1rem;
+        direction: ltr;
+        text-align: left;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        max-height: 240px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
       ul#bypass-list {
         list-style: none;
         margin: 1.25rem 0 0;
@@ -227,6 +240,13 @@
           </form>
           <p class="status" id="addStatus"></p>
         </div>
+
+        <div class="card">
+          <h2>وضعیت اجرای سرویس</h2>
+          <button id="runtimeBtn">نمایش وضعیت</button>
+          <p class="status" id="runtimeStatus"></p>
+          <pre id="runtimeOutput" class="runtime-output"></pre>
+        </div>
       </section>
 
       <footer>
@@ -244,6 +264,9 @@
       const bypassList = document.getElementById("bypass-list");
       const addForm = document.getElementById("addForm");
       const addStatus = document.getElementById("addStatus");
+      const runtimeBtn = document.getElementById("runtimeBtn");
+      const runtimeStatus = document.getElementById("runtimeStatus");
+      const runtimeOutput = document.getElementById("runtimeOutput");
 
       function buildHeaders() {
         const token = tokenInput.value.trim();
@@ -256,7 +279,7 @@
       }
 
       function clearStatus() {
-        [fetchStatus, addStatus, connectionStatus].forEach((el) => {
+        [fetchStatus, addStatus, connectionStatus, runtimeStatus].forEach((el) => {
           el.textContent = "";
           el.classList.remove("error");
         });
@@ -344,6 +367,19 @@
         }
       }
 
+      async function fetchRuntime() {
+        runtimeStatus.textContent = "در حال دریافت...";
+        runtimeStatus.classList.remove("error");
+        try {
+          const data = await request("/admin/runtime");
+          runtimeOutput.textContent = JSON.stringify(data, null, 2);
+          runtimeStatus.textContent = "اطلاعات با موفقیت دریافت شد.";
+        } catch (error) {
+          runtimeOutput.textContent = "";
+          showError(runtimeStatus, error.message);
+        }
+      }
+
       addForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         addStatus.textContent = "در حال ارسال...";
@@ -369,6 +405,7 @@
       });
 
       fetchBtn.addEventListener("click", refreshList);
+      runtimeBtn.addEventListener("click", fetchRuntime);
 
       [baseUrlInput, tokenInput].forEach((input) => {
         input.addEventListener("input", () => {

@@ -8,6 +8,7 @@ from .config import get_settings
 from .dependencies import get_rate_limit_bypass_store
 from .errors import APIError
 from .rate_limiter import RateLimitBypassStore
+from .runtime import build_runtime_report
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -16,6 +17,60 @@ class BypassEntry(BaseModel):
     """Request model for bypass operations."""
 
     ip: str = Field(..., description="IPv4 or IPv6 address to exempt from rate limiting.")
+
+
+class RuntimeProviderInfo(BaseModel):
+    """Describes the resolved provider configuration."""
+
+    default: str | None = Field(
+        description="Name of the default provider handling chat sessions.",
+    )
+    available: list[str] = Field(
+        description="Providers registered and available for use.",
+    )
+    llm_provider: str = Field(
+        description="Configured upstream LLM integration for the MCP agent.",
+    )
+    uses_openrouter: bool = Field(
+        description="Whether the MCP agent is configured to use the OpenRouter API.",
+    )
+    default_model: str | None = Field(
+        description="Model identifier applied by default for LLM requests.",
+    )
+    openrouter_base_url: str | None = Field(
+        description="OpenRouter base URL when OpenRouter is the active provider.",
+    )
+    mcp_servers_configured: bool = Field(
+        description="Indicates if any MCP servers are configured.",
+    )
+    mcp_servers_active: bool = Field(
+        description="True when enough MCP servers are configured for activation.",
+    )
+    mcp_server_names: list[str] = Field(
+        description="Normalised MCP server identifiers supplied to the agent.",
+    )
+    mcp_servers_required_minimum: int = Field(
+        description="Minimum servers required for MCP activation.",
+    )
+
+
+class RuntimeMemoryInfo(BaseModel):
+    """Summarises the configured session memory limits."""
+
+    backend: str = Field(description="Active chat memory backend implementation name.")
+    default_limit: int = Field(
+        description="Number of exchanges stored per session by default.",
+    )
+    max_limit: int = Field(
+        description="Maximum number of exchanges retained per session.",
+    )
+
+
+class RuntimeDiagnostics(BaseModel):
+    """Container for runtime diagnostic information exposed by the admin API."""
+
+    provider: RuntimeProviderInfo
+    memory: RuntimeMemoryInfo
 
 
 async def require_admin_token(
@@ -120,6 +175,19 @@ async def remove_bypass_entry(
         )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/runtime",
+    response_model=RuntimeDiagnostics,
+    summary="Runtime configuration snapshot",
+    response_description="Current provider and memory configuration for the service.",
+)
+async def runtime_diagnostics(_: str = Depends(require_admin_token)) -> RuntimeDiagnostics:
+    """Expose the resolved runtime configuration for observability purposes."""
+
+    report = build_runtime_report()
+    return RuntimeDiagnostics(**report)
 
 
 __all__ = ["require_admin_token", "router"]
