@@ -31,17 +31,20 @@ pip install -r requirements.txt
 ```
 
 ### 2. Configure the service
-Populate configuration values in `app/config/app.config.yaml` so the API can
-start without injecting environment variables during container builds. The
-repository bundles this file with sane defaults, and the settings loader reads
-it automatically when no explicit `APP_CONFIG_FILE` is supplied. Docker images
-can therefore boot without additional bind mounts. Runtime environment
-variables still take precedence, so you can override individual values via
-`docker run -e ...` or your orchestrator. At a minimum set `openrouter_key` (or
-`OPENROUTER_KEY`) so the service can authenticate with the OpenRouter API and
-configure an `admin_token` if you want to access the admin endpoints. The
-bundled configuration pins `default_provider_name: openrouter`, so once
-credentials are provided the service automatically uses the OpenRouter backend.
+Copy the bundled template `app/config/app.config.example.yaml` to
+`app/config/app.config.yaml` and populate the values so the API can start
+without injecting environment variables during container builds. The template
+contains sane defaults and remains tracked in Git, while the real
+`app.config.yaml` is ignored so you can safely store local API keys. The
+settings loader automatically reads the YAML file when no explicit
+`APP_CONFIG_FILE` is supplied, allowing Docker images to boot without extra bind
+mounts. Runtime environment variables still take precedence, so you can
+override individual values via `docker run -e ...` or your orchestrator. At a
+minimum set `openrouter_key` (or `OPENROUTER_KEY`) so the service can
+authenticate with the OpenRouter API and configure an `admin_token` if you want
+to access the admin endpoints. The bundled configuration pins
+`default_provider_name: openrouter`, so once credentials are provided the
+service automatically uses the OpenRouter backend.
 
 If you prefer traditional dotenv workflows copy `.env.example` to `.env`. Any
 values defined in `.env` or directly in the process environment override the
@@ -289,6 +292,7 @@ All admin routes require the `X-Admin-Token` header.
 - `GET /admin/bypass` – List IP addresses that bypass the rate limiter.
 - `POST /admin/bypass` – Add an IP address to the bypass list.
 - `DELETE /admin/bypass/{ip}` – Remove an IP address from the bypass list.
+- `GET /admin/runtime` – Return the currently resolved provider and memory configuration.
 
 ### Rate limiting behaviour
 Requests exceeding the configured quota receive HTTP 429 responses with a JSON

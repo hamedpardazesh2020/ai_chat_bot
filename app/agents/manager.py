@@ -114,6 +114,11 @@ class ProviderManager:
 
         self._providers[key] = provider
 
+    def list_providers(self) -> list[str]:
+        """Return the registered provider names in normalised form."""
+
+        return list(self._providers.keys())
+
     def unregister(self, name: str) -> None:
         """Remove a provider from the registry."""
 
