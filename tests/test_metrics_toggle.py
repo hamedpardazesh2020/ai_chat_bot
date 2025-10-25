@@ -21,7 +21,7 @@ from app.observability import MetricsCollector
 
 
 class _SilentProvider:
-    name = "openrouter"
+    name = "mcp-agent"
 
     async def chat(self, messages, **options):  # type: ignore[override]
         return ChatResponse(

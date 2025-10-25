@@ -23,7 +23,7 @@ def test_settings_load_from_default_config_when_present(monkeypatch, tmp_path):
     config_file.write_text(
         """
 openrouter_key: sk-or-config
-default_provider_name: openrouter
+default_provider_name: mcp-agent
     """.strip()
     )
 
@@ -40,7 +40,7 @@ default_provider_name: openrouter
     settings = config_module.get_settings()
 
     assert settings.openrouter_key == "sk-or-config"
-    assert settings.default_provider_name == "openrouter"
+    assert settings.default_provider_name == "mcp-agent"
 
 
 def test_settings_fall_back_to_example_config(monkeypatch, tmp_path):
@@ -51,7 +51,7 @@ def test_settings_fall_back_to_example_config(monkeypatch, tmp_path):
     example_file.write_text(
         """
 openrouter_key: sk-or-example
-default_provider_name: openrouter
+default_provider_name: mcp-agent
         """.strip()
     )
 
@@ -68,7 +68,7 @@ default_provider_name: openrouter
     settings = config_module.get_settings()
 
     assert settings.openrouter_key == "sk-or-example"
-    assert settings.default_provider_name == "openrouter"
+    assert settings.default_provider_name == "mcp-agent"
 
 
 def test_environment_overrides_config_file(monkeypatch, tmp_path):

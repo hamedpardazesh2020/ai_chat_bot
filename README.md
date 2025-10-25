@@ -43,8 +43,9 @@ override individual values via `docker run -e ...` or your orchestrator. At a
 minimum set `openrouter_key` (or `OPENROUTER_KEY`) so the service can
 authenticate with the OpenRouter API and configure an `admin_token` if you want
 to access the admin endpoints. The bundled configuration pins
-`default_provider_name: openrouter`, so once credentials are provided the
-service automatically uses the OpenRouter backend.
+`default_provider_name: mcp-agent`, so once credentials are provided every chat
+request runs through the embedded MCP agent, which uses OpenRouter as its
+default LLM backend.
 
 If you prefer traditional dotenv workflows copy `.env.example` to `.env`. Any
 values defined in `.env` or directly in the process environment override the
@@ -62,11 +63,12 @@ cp .env.example .env
 # edit .env
 ```
 
-When `MCP_AGENT_SERVERS` lists at least two server identifiers the application
-automatically registers an `MCPAgentChatProvider`. The provider loads its
-server catalogue from the `mcp_agent.config.yaml` file referenced by
-`MCP_AGENT_CONFIG`. A minimal configuration that connects to both the
-filesystem and fetch reference servers looks like this:
+When `MCP_AGENT_SERVERS` lists one or more server identifiers the application
+automatically enables MCP server orchestration within the
+`MCPAgentChatProvider`. The provider loads its server catalogue from the
+`mcp_agent.config.yaml` file referenced by `MCP_AGENT_CONFIG`. A minimal
+configuration that connects to both the filesystem and fetch reference servers
+looks like this:
 
 ```yaml
 # mcp_agent.config.yaml
@@ -86,8 +88,8 @@ mcp:
         - mcp-server-fetch
 ```
 
-Set `MCP_AGENT_SERVERS=filesystem,fetch` (or any other two entries defined in
-the configuration file) and choose the LLM the agent should attach. If you want
+Set `MCP_AGENT_SERVERS=filesystem,fetch` (or any other entries defined in the
+configuration file) and choose the LLM the agent should attach. If you want
 to expose the ham3d catalogue search server defined in
 `mcp_servers/ham3d_mysql.py`, reference the bundled
 `mcp_servers/ham3d_mysql/config/mcp_agent.config.yaml` from your MCP agent
@@ -228,14 +230,14 @@ settings.
 | Variable | Description | Default |
 | --- | --- | --- |
 | `ADMIN_TOKEN` | Token required for admin endpoints. When unset the admin API is disabled. | `None` |
-| `DEFAULT_PROVIDER` | Name of the provider the backend uses for every request. Clients cannot override this value. | `openrouter` |
-| `OPENROUTER_KEY` | API key used for both the standalone OpenRouter provider and the MCP agent when `MCP_AGENT_LLM=openrouter`. | `None` |
-| `OPENROUTER_BASE_URL` | Override the OpenRouter API endpoint used by both providers. | `https://openrouter.ai/api/v1` |
+| `DEFAULT_PROVIDER` | Name of the provider the backend uses for every request. Clients cannot override this value. | `mcp-agent` |
+| `OPENROUTER_KEY` | API key used by the MCP agent when `MCP_AGENT_LLM=openrouter`. | `None` |
+| `OPENROUTER_BASE_URL` | Override the OpenRouter API endpoint used by the MCP agent. | `https://openrouter.ai/api/v1` |
 | `OPENROUTER_MODEL` | Default OpenRouter model requested when none is supplied explicitly. | `openrouter/auto` |
 | `MCP_SERVER_URL` | Legacy fallback for the deprecated MCP client. | `None` |
 | `MCP_API_KEY` | Optional API key for legacy MCP servers. | `None` |
 | `MCP_AGENT_CONFIG` | Path to an `mcp_agent.config.yaml` describing downstream MCP servers. | `None` |
-| `MCP_AGENT_SERVERS` | Comma separated list of at least two server names to expose to the agent. | `None` |
+| `MCP_AGENT_SERVERS` | Comma separated list of MCP server names to expose to the agent. Leave blank to run the agent without MCP servers. | `None` |
 | `MCP_AGENT_APP_NAME` | Override the logical name reported by the embedded MCP app. | `chat-backend` |
 | `MCP_AGENT_INSTRUCTION` | Optional instruction passed to the agent instead of `INITIAL_SYSTEM_PROMPT`. | `None` |
 | `MCP_AGENT_LLM` | Identifier for the augmented LLM to attach (`openai` or `openrouter`). | `openrouter` |

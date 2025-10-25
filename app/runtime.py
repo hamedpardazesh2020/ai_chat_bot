@@ -8,7 +8,7 @@ from .config import Settings, get_settings
 from .dependencies import get_chat_memory, get_provider_manager
 
 
-_MIN_MCP_SERVERS: int = 2
+_MIN_MCP_SERVERS: int = 1
 
 
 def build_runtime_report(

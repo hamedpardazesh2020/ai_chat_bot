@@ -40,7 +40,7 @@ from app.agents.manager import (
 
 
 class _SilentProvider:
-    name = "openrouter"
+    name = "mcp-agent"
 
     async def chat(self, messages, **options):  # type: ignore[override]
         return ChatResponse(

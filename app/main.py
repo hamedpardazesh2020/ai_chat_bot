@@ -15,10 +15,6 @@ from .agents.manager import ProviderNotRegisteredError
 from .agents.providers import (
     MCPAgentChatProvider,
     MCPAgentProviderError,
-    OpenAIChatProvider,
-    OpenAIProviderError,
-    OpenRouterChatProvider,
-    OpenRouterProviderError,
     UnconfiguredChatProvider,
 )
 from .config import get_settings
@@ -128,38 +124,15 @@ def create_app() -> FastAPI:
         if callable(close_callback):
             shutdown_callbacks.append(close_callback)
 
-    if settings.openrouter_key:
-        try:
-            provider = OpenRouterChatProvider()
-        except OpenRouterProviderError as exc:
-            provider_logger.error(
-                "openrouter_provider_registration_failed",
-                extra={"error": str(exc)},
-            )
-        else:
-            _register_provider(provider)
-
-    if settings.openai_api_key:
-        try:
-            provider = OpenAIChatProvider()
-        except OpenAIProviderError as exc:
-            provider_logger.error(
-                "openai_provider_registration_failed",
-                extra={"error": str(exc)},
-            )
-        else:
-            _register_provider(provider)
-
-    if settings.mcp_agent_servers:
-        try:
-            provider = MCPAgentChatProvider.from_settings(settings)
-        except MCPAgentProviderError as exc:
-            provider_logger.error(
-                "mcp_provider_registration_failed",
-                extra={"error": str(exc)},
-            )
-        else:
-            _register_provider(provider)
+    try:
+        provider = MCPAgentChatProvider.from_settings(settings)
+    except MCPAgentProviderError as exc:
+        provider_logger.error(
+            "mcp_provider_registration_failed",
+            extra={"error": str(exc)},
+        )
+    else:
+        _register_provider(provider)
 
     desired_default = (settings.default_provider_name or "").strip()
     if desired_default:

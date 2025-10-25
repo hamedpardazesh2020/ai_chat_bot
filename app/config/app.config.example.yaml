@@ -3,7 +3,7 @@
 
 admin_token: change-me
 
-default_provider_name: openrouter
+default_provider_name: mcp-agent
 openrouter_key: null
 openrouter_base_url: https://openrouter.ai/api/v1
 openrouter_default_model: openrouter/auto
