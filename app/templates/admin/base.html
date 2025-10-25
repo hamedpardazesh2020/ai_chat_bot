@@ -38,6 +38,15 @@
         flex-direction: column;
       }
 
+      body.header-collapsed header.topbar {
+        justify-content: flex-end;
+        padding-inline: 1rem;
+      }
+
+      body.header-collapsed header.topbar .topbar-main {
+        display: none;
+      }
+
       header.topbar {
         backdrop-filter: blur(12px);
         background: rgba(255, 255, 255, 0.88);
@@ -47,10 +56,41 @@
         z-index: 20;
         padding: 1.2rem clamp(1.5rem, 5vw, 3rem);
         display: flex;
-        flex-wrap: wrap;
-        gap: 1.5rem;
+        align-items: center;
+        gap: 1rem;
+        justify-content: space-between;
+      }
+
+      .topbar-main {
+        display: flex;
+        flex: 1;
         align-items: center;
         justify-content: space-between;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+      }
+
+      .topbar-toggle {
+        border: none;
+        border-radius: 50px;
+        padding: 0.55rem 1.2rem;
+        background: rgba(37, 99, 235, 0.12);
+        color: var(--primary-dark);
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.15s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+
+      .topbar-toggle:hover {
+        background: rgba(37, 99, 235, 0.2);
+      }
+
+      .topbar-toggle:active {
+        transform: translateY(1px);
       }
 
       .brand {
@@ -99,65 +139,6 @@
         background: rgba(37, 99, 235, 0.15);
       }
 
-      .token-form {
-        display: flex;
-        align-items: flex-end;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-      }
-
-      .token-form label {
-        font-size: 0.95rem;
-        color: var(--muted);
-        font-weight: 600;
-      }
-
-      .token-controls {
-        display: flex;
-        align-items: stretch;
-        gap: 0.5rem;
-      }
-
-      .token-controls input {
-        padding: 0.6rem 0.9rem;
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        background: var(--surface-subtle);
-        min-width: clamp(180px, 20vw, 260px);
-        font-family: inherit;
-        font-size: 0.95rem;
-      }
-
-      .token-controls button,
-      .token-form button[type="submit"] {
-        border: none;
-        border-radius: 12px;
-        padding: 0.6rem 1.1rem;
-        background: rgba(37, 99, 235, 0.12);
-        color: var(--primary-dark);
-        font-weight: 600;
-        font-family: inherit;
-        cursor: pointer;
-        transition: background 0.2s ease, transform 0.15s ease;
-      }
-
-      .token-controls button:hover,
-      .token-form button[type="submit"]:hover {
-        background: rgba(37, 99, 235, 0.2);
-      }
-
-      .token-controls button:active,
-      .token-form button[type="submit"]:active {
-        transform: translateY(1px);
-      }
-
-      #tokenStatus {
-        width: 100%;
-        margin: 0.25rem 0 0;
-        color: var(--muted);
-        font-size: 0.9rem;
-      }
-
       main.content {
         flex: 1;
         width: min(1200px, 100%);
@@ -174,6 +155,46 @@
         text-align: center;
         color: rgba(15, 23, 42, 0.55);
         font-size: 0.9rem;
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font-family: inherit;
+      }
+
+      .primary,
+      .secondary {
+        border: none;
+        border-radius: 12px;
+        padding: 0.55rem 1.2rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        transition: transform 0.15s ease, box-shadow 0.2s ease;
+      }
+
+      .primary {
+        background: linear-gradient(135deg, var(--primary), #3b82f6);
+        color: #fff;
+        box-shadow: 0 12px 24px rgba(37, 99, 235, 0.28);
+      }
+
+      .primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 16px 32px rgba(37, 99, 235, 0.32);
+      }
+
+      .secondary {
+        background: rgba(37, 99, 235, 0.08);
+        color: var(--primary-dark);
+        border: 1px solid rgba(37, 99, 235, 0.2);
+      }
+
+      .secondary:disabled {
+        opacity: 0.5;
+        cursor: default;
       }
 
       .grid {
@@ -220,17 +241,11 @@
 
       @media (max-width: 860px) {
         header.topbar {
-          flex-direction: column;
-          align-items: stretch;
+          flex-wrap: wrap;
         }
 
-        nav {
-          justify-content: flex-start;
-        }
-
-        .token-controls input {
-          min-width: 0;
-          width: min(100%, 240px);
+        .topbar-main {
+          justify-content: center;
         }
       }
 
@@ -250,28 +265,32 @@
       }
     </style>
   </head>
-  <body data-page="{{ page_id | default('home') }}">
+  <body data-page="{{ page_id | default('home') }}" class="header-collapsed">
     <header class="topbar">
-      <div class="brand">
-        <h1>پنل مدیریت سرویس چت</h1>
-        <p>دسترسی سریع به ابزارهای نظارتی و عملیاتی سرویس</p>
-      </div>
-      <nav>
-        <a href="{{ request.url_for('admin-ui-home') }}" class="{% if page_id == 'home' %}active{% endif %}">خانه</a>
-        <a href="{{ request.url_for('admin-ui-sessions') }}" class="{% if page_id == 'sessions' %}active{% endif %}">سشن‌ها و گفتگوها</a>
-        <a href="{{ request.url_for('admin-ui-metrics') }}" class="{% if page_id == 'metrics' %}active{% endif %}">متریک‌ها</a>
-        <a href="{{ request.url_for('admin-ui-runtime') }}" class="{% if page_id == 'runtime' %}active{% endif %}">اطلاعات سرویس</a>
-        <a href="{{ request.url_for('admin-ui-bypass') }}" class="{% if page_id == 'bypass' %}active{% endif %}">مدیریت آی‌پی‌ها</a>
-      </nav>
-      <form class="token-form" id="tokenForm">
-        <label for="adminTokenInput">توکن ادمین</label>
-        <div class="token-controls">
-          <input id="adminTokenInput" type="password" autocomplete="off" placeholder="توکن را وارد کنید" />
-          <button type="button" id="toggleToken">نمایش</button>
-          <button type="submit">ذخیره</button>
+      <button
+        type="button"
+        class="topbar-toggle"
+        id="headerToggle"
+        aria-expanded="false"
+        aria-controls="topbarMain"
+        aria-label="باز و بسته کردن هدر"
+      >
+        ☰ منو
+      </button>
+      <div class="topbar-main" id="topbarMain">
+        <div class="brand">
+          <h1>پنل مدیریت سرویس چت</h1>
+          <p>دسترسی سریع به ابزارهای نظارتی و عملیاتی سرویس</p>
         </div>
-        <p id="tokenStatus"></p>
-      </form>
+        <nav>
+          <a href="{{ request.url_for('admin-ui-home') }}" class="{% if page_id == 'home' %}active{% endif %}">خانه</a>
+          <a href="{{ request.url_for('admin-ui-sessions') }}" class="{% if page_id == 'sessions' %}active{% endif %}">سشن‌ها و گفتگوها</a>
+          <a href="{{ request.url_for('admin-ui-metrics') }}" class="{% if page_id == 'metrics' %}active{% endif %}">متریک‌ها</a>
+          <a href="{{ request.url_for('admin-ui-runtime') }}" class="{% if page_id == 'runtime' %}active{% endif %}">اطلاعات سرویس</a>
+          <a href="{{ request.url_for('admin-ui-bypass') }}" class="{% if page_id == 'bypass' %}active{% endif %}">مدیریت آی‌پی‌ها</a>
+          <a href="{{ request.url_for('admin-ui-token') }}" class="{% if page_id == 'token' %}active{% endif %}">توکن ادمین</a>
+        </nav>
+      </div>
     </header>
 
     <main class="content">
@@ -293,6 +312,10 @@
         const toggleButton = document.getElementById("toggleToken");
         const tokenForm = document.getElementById("tokenForm");
         const tokenStatus = document.getElementById("tokenStatus");
+        const headerToggle = document.getElementById("headerToggle");
+        const HEADER_STATE_KEY = "admin-ui-header-expanded";
+
+        let cachedToken = "";
 
         function withLocalStorage(callback) {
           try {
@@ -305,11 +328,14 @@
         function loadToken() {
           withLocalStorage(() => {
             const stored = localStorage.getItem(STORAGE_KEYS.token);
-            if (stored) {
-              tokenInput.value = stored;
-              tokenStatus.textContent = "توکن از تنظیمات ذخیره‌شده بارگذاری شد.";
-            } else {
-              tokenStatus.textContent = "توکن برای درخواست‌های محافظت‌شده الزامی است.";
+            cachedToken = stored || "";
+            if (tokenInput) {
+              tokenInput.value = cachedToken;
+            }
+            if (tokenStatus) {
+              tokenStatus.textContent = cachedToken
+                ? "توکن از تنظیمات ذخیره‌شده بارگذاری شد."
+                : "توکن برای درخواست‌های محافظت‌شده الزامی است.";
             }
           });
         }
@@ -322,6 +348,7 @@
               localStorage.removeItem(STORAGE_KEYS.token);
             }
           });
+          cachedToken = value;
         }
 
         function showStatus(message, isError = false) {
@@ -332,7 +359,7 @@
 
         loadToken();
 
-        if (toggleButton) {
+        if (toggleButton && tokenInput) {
           toggleButton.addEventListener("click", () => {
             const isPassword = tokenInput.type === "password";
             tokenInput.type = isPassword ? "text" : "password";
@@ -340,7 +367,7 @@
           });
         }
 
-        if (tokenForm) {
+        if (tokenForm && tokenInput) {
           tokenForm.addEventListener("submit", (event) => {
             event.preventDefault();
             const trimmed = tokenInput.value.trim();
@@ -350,7 +377,10 @@
         }
 
         function getToken() {
-          return tokenInput.value.trim();
+          if (tokenInput) {
+            return tokenInput.value.trim();
+          }
+          return cachedToken.trim();
         }
 
         async function adminFetch(path, options = {}) {
@@ -391,6 +421,34 @@
           getToken,
           showStatus,
         };
+
+        function applyHeaderState(isExpanded) {
+          document.body.classList.toggle("header-collapsed", !isExpanded);
+          if (headerToggle) {
+            headerToggle.setAttribute("aria-expanded", String(isExpanded));
+            headerToggle.textContent = isExpanded ? "✕ بستن" : "☰ منو";
+          }
+        }
+
+        let initialExpanded = false;
+        withLocalStorage(() => {
+          const storedState = localStorage.getItem(HEADER_STATE_KEY);
+          if (storedState === "true") {
+            initialExpanded = true;
+          }
+        });
+
+        applyHeaderState(initialExpanded);
+
+        if (headerToggle) {
+          headerToggle.addEventListener("click", () => {
+            const isExpanded = document.body.classList.contains("header-collapsed") ? true : false;
+            applyHeaderState(isExpanded);
+            withLocalStorage(() => {
+              localStorage.setItem(HEADER_STATE_KEY, String(isExpanded));
+            });
+          });
+        }
       })();
     </script>
 

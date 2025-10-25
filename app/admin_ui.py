@@ -61,3 +61,13 @@ async def bypass_page(request: Request) -> HTMLResponse:
         "admin/bypass.html",
         {"request": request, "page_id": "bypass"},
     )
+
+
+@router.get("/token", response_class=HTMLResponse, name="admin-ui-token")
+async def token_page(request: Request) -> HTMLResponse:
+    """Render the admin token management screen."""
+
+    return templates.TemplateResponse(
+        "admin/token.html",
+        {"request": request, "page_id": "token"},
+    )

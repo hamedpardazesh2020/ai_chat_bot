@@ -6,10 +6,6 @@
   <section class="metrics-header">
     <div>
       <h2>نمای زنده متریک‌های سرویس</h2>
-      <p>
-        آخرین وضعیت درخواست‌ها و پاسخ‌ها در این بخش به‌صورت نمودار زنده نمایش داده می‌شود. برای
-        دسترسی دقیق‌تر می‌توانید بازهٔ به‌روزرسانی را تغییر دهید.
-      </p>
       <p>آخرین به‌روزرسانی: <strong id="lastUpdated">—</strong></p>
     </div>
     <div class="interval-control">
@@ -147,6 +143,8 @@
       const statusMessage = document.getElementById("metricsStatus");
       const ctx = document.getElementById("metricsChart");
 
+      statusMessage.hidden = true;
+
       const dataPoints = {
         labels: [],
         requests: [],
@@ -213,9 +211,10 @@
 
       let timer = null;
 
-      function setStatus(message, isError = false) {
+      function setStatus(message = "", isError = false) {
         statusMessage.textContent = message;
-        statusMessage.classList.toggle("error", Boolean(isError));
+        statusMessage.classList.toggle("error", Boolean(isError && message));
+        statusMessage.hidden = !message;
       }
 
       function scheduleNext(interval) {
@@ -255,7 +254,7 @@
             maximumFractionDigits: 2,
           });
           lastUpdated.textContent = new Date().toLocaleString("fa-IR");
-          setStatus("اطلاعات با موفقیت به‌روزرسانی شد.");
+          setStatus("");
           updateChart(snapshot);
         } catch (error) {
           setStatus(error.message, true);
