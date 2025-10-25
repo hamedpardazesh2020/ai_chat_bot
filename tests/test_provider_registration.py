@@ -20,13 +20,14 @@ def _reset_settings_cache() -> None:
     get_settings.cache_clear()
 
 
-def test_create_app_registers_openrouter_provider(monkeypatch):
-    """Providing an OpenRouter key should register the provider by default."""
+def test_create_app_registers_mcp_agent_provider_by_default(monkeypatch):
+    """Supplying OpenRouter credentials should register the MCP agent provider."""
 
     monkeypatch.setenv("OPENROUTER_KEY", "sk-or-example")
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("MCP_AGENT_SERVERS", raising=False)
+    monkeypatch.delenv("MCP_AGENT_LLM", raising=False)
 
     _reset_settings_cache()
 
@@ -37,17 +38,18 @@ def test_create_app_registers_openrouter_provider(monkeypatch):
     try:
         create_app()
         available = manager.available()
-        assert "openrouter" in available
-        assert manager.default == "openrouter"
+        assert set(available) == {"mcp-agent"}
+        assert manager.default == "mcp-agent"
     finally:
         set_provider_manager(original_manager)
         _reset_settings_cache()
 
 
-def test_create_app_registers_openai_provider(monkeypatch):
-    """Providing an OpenAI key should register the OpenAI provider."""
+def test_create_app_supports_openai_llm_fallback(monkeypatch):
+    """When configured the MCP agent should use OpenAI as its LLM backend."""
 
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("MCP_AGENT_LLM", "openai")
     monkeypatch.delenv("OPENROUTER_KEY", raising=False)
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.delenv("MCP_AGENT_SERVERS", raising=False)
@@ -61,8 +63,8 @@ def test_create_app_registers_openai_provider(monkeypatch):
     try:
         create_app()
         available = manager.available()
-        assert "openai" in available
-        assert manager.default == "openai"
+        assert set(available) == {"mcp-agent"}
+        assert manager.default == "mcp-agent"
     finally:
         set_provider_manager(original_manager)
         _reset_settings_cache()
@@ -109,8 +111,8 @@ def test_create_app_accepts_openrouter_api_key_alias(monkeypatch):
     try:
         create_app()
         available = manager.available()
-        assert "openrouter" in available
-        assert manager.default == "openrouter"
+        assert set(available) == {"mcp-agent"}
+        assert manager.default == "mcp-agent"
     finally:
         set_provider_manager(original_manager)
         _reset_settings_cache()

@@ -102,7 +102,7 @@ class Settings(BaseSettings):
         default="openrouter/auto", env="OPENROUTER_MODEL"
     )
     default_provider_name: str = Field(
-        default="openrouter", env="DEFAULT_PROVIDER"
+        default="mcp-agent", env="DEFAULT_PROVIDER"
     )
     mcp_server_url: Optional[str] = Field(default=None, env="MCP_SERVER_URL")
     mcp_api_key: Optional[str] = Field(default=None, env="MCP_API_KEY")
@@ -116,7 +116,10 @@ class Settings(BaseSettings):
     mcp_agent_instruction: Optional[str] = Field(
         default=None, env="MCP_AGENT_INSTRUCTION"
     )
-    mcp_agent_llm_provider: str = Field(default="openrouter", env="MCP_AGENT_LLM")
+    mcp_agent_llm_provider: str = Field(
+        default="openrouter",
+        validation_alias=AliasChoices("MCP_AGENT_LLM", "MCP_AGENT_LLM_PROVIDER"),
+    )
     mcp_agent_default_model: Optional[str] = Field(
         default=None, env="MCP_AGENT_MODEL"
     )
@@ -246,10 +249,10 @@ class Settings(BaseSettings):
     @classmethod
     def _normalise_default_provider(cls, value: Any) -> str:
         if value is None:
-            return "openrouter"
+            return "mcp-agent"
         if isinstance(value, str):
             trimmed = value.strip()
-            return trimmed or "openrouter"
+            return trimmed or "mcp-agent"
         return str(value)
 
     @field_validator("mcp_agent_servers", mode="before")

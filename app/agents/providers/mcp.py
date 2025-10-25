@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import os
 from dataclasses import dataclass
 from typing import Any, Mapping, MutableMapping, Optional, Sequence, Type
@@ -48,26 +49,28 @@ class MCPAgentChatProvider(ChatProvider):
     def __init__(
         self,
         *,
-        server_names: Sequence[str],
+        server_names: Sequence[str] | None,
         instruction: Optional[str] = None,
         llm_class: Type[AugmentedLLM] = OpenAIAugmentedLLM,
         llm_options: Optional[Mapping[str, Any]] = None,
         app: Optional[MCPApp] = None,
         default_model: Optional[str] = None,
         request_overrides: Optional[Mapping[str, Any]] = None,
+        fallback_provider: Optional[ChatProvider] = None,
+        fallback_options: Optional[Mapping[str, Any]] = None,
     ) -> None:
-        if not server_names:
-            raise MCPAgentProviderError("At least one MCP server name must be configured.")
-
-        self._server_names = list(server_names)
+        cleaned_servers = [name.strip() for name in (server_names or []) if name and name.strip()]
+        self._server_names = cleaned_servers
         self._instruction = instruction
         self._llm_class = llm_class
         self._llm_options = dict(llm_options or {})
         self._default_model = default_model
         self._request_overrides = dict(request_overrides or {})
+        self._fallback_provider = fallback_provider
+        self._fallback_options = dict(fallback_options or {})
 
-        self._app = app or MCPApp(name="chat-backend")
-        self._app_lock = asyncio.Lock()
+        self._app = app or MCPApp(name="chat-backend") if self._server_names else None
+        self._app_lock = asyncio.Lock() if self._server_names else None
 
     @classmethod
     def from_settings(cls, settings: Optional[Settings] = None) -> "MCPAgentChatProvider":
@@ -75,10 +78,8 @@ class MCPAgentChatProvider(ChatProvider):
 
         settings = settings or get_settings()
         server_names = settings.mcp_agent_servers
-        if len(server_names) < 2:
-            raise MCPAgentProviderError(
-                "MCP_AGENT_SERVERS must define at least two MCP servers for aggregation."
-            )
+        fallback_provider: ChatProvider | None = None
+        fallback_options: MutableMapping[str, Any] = {}
 
         llm_identifier = settings.mcp_agent_llm_provider
         llm_class = cls._resolve_llm_class(llm_identifier)
@@ -94,7 +95,13 @@ class MCPAgentChatProvider(ChatProvider):
         if default_model:
             llm_options["default_model"] = default_model
 
-        app = MCPApp(name=settings.mcp_agent_app_name, settings=settings.mcp_agent_config)
+        if not server_names:
+            fallback_provider = cls._initialise_fallback_provider(llm_identifier)
+            if default_model:
+                fallback_options["model"] = default_model
+            app: MCPApp | None = None
+        else:
+            app = MCPApp(name=settings.mcp_agent_app_name, settings=settings.mcp_agent_config)
 
         request_overrides: MutableMapping[str, Any] = {}
         if settings.initial_system_prompt and settings.mcp_agent_instruction is None:
@@ -113,6 +120,8 @@ class MCPAgentChatProvider(ChatProvider):
             app=app,
             default_model=default_model,
             request_overrides=request_overrides,
+            fallback_provider=fallback_provider,
+            fallback_options=fallback_options,
         )
 
     @staticmethod
@@ -140,6 +149,28 @@ class MCPAgentChatProvider(ChatProvider):
         if default_model:
             os.environ["OPENAI_DEFAULT_MODEL"] = default_model
 
+    @staticmethod
+    def _initialise_fallback_provider(identifier: str) -> ChatProvider:
+        if identifier == "openrouter":
+            from .openrouter import OpenRouterChatProvider, OpenRouterProviderError
+
+            try:
+                return OpenRouterChatProvider()
+            except OpenRouterProviderError as exc:
+                raise MCPAgentProviderError(str(exc)) from exc
+
+        if identifier == "openai":
+            from .openai import OpenAIChatProvider, OpenAIProviderError
+
+            try:
+                return OpenAIChatProvider()
+            except OpenAIProviderError as exc:
+                raise MCPAgentProviderError(str(exc)) from exc
+
+        raise MCPAgentProviderError(
+            f"Unsupported MCP agent LLM provider '{identifier}'. Supported values are 'openai' and 'openrouter'."
+        )
+
     async def chat(
         self,
         messages: Sequence[ChatMessage],
@@ -148,14 +179,27 @@ class MCPAgentChatProvider(ChatProvider):
         if not messages:
             raise MCPAgentProviderError("At least one message is required for MCP agent interactions.")
 
-        resolution = self._prepare_messages(messages)
+        instruction = options.pop("instruction", self._instruction)
         server_names = options.pop("server_names", None) or self._server_names
         if isinstance(server_names, str):
             server_names = [part.strip() for part in server_names.split(",") if part.strip()]
         if not server_names:
-            raise MCPAgentProviderError("server_names cannot be empty during request resolution.")
+            if self._fallback_provider is None:
+                raise MCPAgentProviderError(
+                    "No MCP servers configured and no fallback provider available for requests."
+                )
 
-        instruction = options.pop("instruction", self._instruction)
+            fallback_messages = self._inject_instruction(messages, instruction)
+            fallback_options = dict(self._fallback_options)
+            fallback_options.update(options)
+            return await self._fallback_provider.chat(fallback_messages, **fallback_options)
+
+        if self._app is None or self._app_lock is None:
+            raise MCPAgentProviderError(
+                "MCP servers were supplied but the MCP application is not initialised."
+            )
+
+        resolution = self._prepare_messages(messages)
 
         async with self._app_lock:
             async with self._app.run() as running_app:
@@ -194,6 +238,21 @@ class MCPAgentChatProvider(ChatProvider):
 
         return ChatResponse(message=message, raw=raw_payload, usage=None)
 
+    def _inject_instruction(
+        self, messages: Sequence[ChatMessage], instruction: Optional[str]
+    ) -> list[ChatMessage]:
+        if not instruction:
+            return list(messages)
+
+        if messages:
+            first = messages[0]
+            if first.role == "system" and (first.content or "").strip() == instruction.strip():
+                return list(messages)
+
+        prefixed = [ChatMessage(role="system", content=instruction)]
+        prefixed.extend(messages)
+        return prefixed
+
     def _prepare_messages(self, messages: Sequence[ChatMessage]) -> _ResolvedMessage:
         converted = [self._to_llm_message(message) for message in messages]
         if not converted:
@@ -224,7 +283,15 @@ class MCPAgentChatProvider(ChatProvider):
         return params
 
     async def aclose(self) -> None:
-        await self._app.cleanup()
+        if self._app is not None:
+            await self._app.cleanup()
+
+        if self._fallback_provider is not None:
+            close_callback = getattr(self._fallback_provider, "aclose", None)
+            if callable(close_callback):
+                result = close_callback()
+                if inspect.isawaitable(result):
+                    await result
 
     async def __aenter__(self) -> "MCPAgentChatProvider":
         return self

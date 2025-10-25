@@ -28,10 +28,11 @@ These instructions apply to the entire repository.
 - Configuration for `mcp-agent` comes solely from the environment / config
   files (for local development, `.env`). Never add request parameters, query
   flags, or UI controls that alter provider choice.
-- By default `mcp-agent` calls the OpenRouter API. Ensure the required
-  OpenRouter credentials (for example `OPENROUTER_KEY`) are read from the
-  configuration layer so every chat request is proxied through OpenRouter.
-- Support optional MCP servers by reading `MCP_AGENT_SERVERS` from the
-  configuration. When this value is provided, `mcp-agent` must include those
-  servers when chatting. When it is absent, the agent must behave exactly like
-  the OpenRouter-only flow.
+- `mcp-agent` always serves requests. When no MCP servers are configured it
+  must transparently delegate to OpenRouter using the credentials supplied via
+  configuration. Optional MCP servers are added **only** when
+  `MCP_AGENT_SERVERS` is provided, in which case the agent should fan out to
+  those servers. Leaving the value blank must keep the OpenRouter-only flow.
+- OpenRouter (or another configured LLM backend) may only be changed through
+  configuration values such as `MCP_AGENT_LLM` and `MCP_AGENT_MODEL`. Runtime
+  toggles or ad-hoc request parameters are prohibited.
