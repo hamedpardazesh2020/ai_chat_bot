@@ -131,6 +131,43 @@ class Settings(BaseSettings):
 
     redis_url: Optional[str] = Field(default=None, env="REDIS_URL")
 
+    history_storage_backend: str = Field(
+        default="none", env="HISTORY_STORAGE_BACKEND"
+    )
+    history_namespace: str = Field(default="chat_history", env="HISTORY_NAMESPACE")
+    history_mysql_host: str = Field(default="localhost", env="HISTORY_MYSQL_HOST")
+    history_mysql_port: int = Field(default=3306, env="HISTORY_MYSQL_PORT")
+    history_mysql_user: Optional[str] = Field(
+        default=None, env="HISTORY_MYSQL_USER"
+    )
+    history_mysql_password: Optional[str] = Field(
+        default=None, env="HISTORY_MYSQL_PASSWORD"
+    )
+    history_mysql_database: Optional[str] = Field(
+        default=None, env="HISTORY_MYSQL_DATABASE"
+    )
+    history_mysql_session_table: str = Field(
+        default="chat_sessions", env="HISTORY_MYSQL_SESSION_TABLE"
+    )
+    history_mysql_message_table: str = Field(
+        default="chat_messages", env="HISTORY_MYSQL_MESSAGE_TABLE"
+    )
+    history_mongodb_uri: str = Field(
+        default="mongodb://localhost:27017", env="HISTORY_MONGODB_URI"
+    )
+    history_mongodb_database: str = Field(
+        default="chat_history", env="HISTORY_MONGODB_DATABASE"
+    )
+    history_mongodb_session_collection: str = Field(
+        default="chat_sessions", env="HISTORY_MONGODB_SESSION_COLLECTION"
+    )
+    history_mongodb_message_collection: str = Field(
+        default="chat_messages", env="HISTORY_MONGODB_MESSAGE_COLLECTION"
+    )
+    history_redis_url: Optional[str] = Field(
+        default=None, env="HISTORY_REDIS_URL"
+    )
+
     rate_rps: float = Field(default=1.0, env="RATE_RPS")
     rate_burst: int = Field(default=5, env="RATE_BURST")
 
@@ -282,11 +319,61 @@ class Settings(BaseSettings):
             return "openrouter"
         return str(value).strip().lower()
 
+    @field_validator("history_storage_backend", mode="before")
+    @classmethod
+    def _normalise_history_backend(cls, value: Optional[str]) -> str:
+        if value is None:
+            return "none"
+        backend = str(value).strip().lower()
+        if backend not in {"none", "mysql", "mongodb", "redis"}:
+            raise ValueError(
+                "HISTORY_STORAGE_BACKEND must be one of: none, mysql, mongodb, redis."
+            )
+        return backend
+
+    @model_validator(mode="after")
+    def _validate_history_configuration(self) -> "Settings":
+        backend = self.history_storage_backend
+        if backend == "mysql":
+            missing = []
+            if not (self.history_mysql_host or "").strip():
+                missing.append("HISTORY_MYSQL_HOST")
+            if not (self.history_mysql_user or "").strip():
+                missing.append("HISTORY_MYSQL_USER")
+            if not (self.history_mysql_database or "").strip():
+                missing.append("HISTORY_MYSQL_DATABASE")
+            if missing:
+                raise ValueError(
+                    "MySQL history storage requires the following settings: "
+                    + ", ".join(missing)
+                )
+        elif backend == "mongodb":
+            if not (self.history_mongodb_uri or "").strip():
+                raise ValueError(
+                    "MongoDB history storage requires HISTORY_MONGODB_URI to be set."
+                )
+            if not (self.history_mongodb_database or "").strip():
+                raise ValueError(
+                    "MongoDB history storage requires HISTORY_MONGODB_DATABASE to be set."
+                )
+        elif backend == "redis":
+            if not (self.history_redis_url or self.redis_url):
+                raise ValueError(
+                    "Redis history storage requires HISTORY_REDIS_URL or REDIS_URL to be set."
+                )
+        return self
+
     @property
     def redis_enabled(self) -> bool:
         """Return ``True`` when Redis integration should be used."""
 
         return bool(self.redis_url)
+
+    @property
+    def history_storage_enabled(self) -> bool:
+        """Return ``True`` when a persistent history backend is configured."""
+
+        return self.history_storage_backend != "none"
 
     @property
     def memory_limit(self) -> int:

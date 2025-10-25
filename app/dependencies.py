@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from .agents.manager import ProviderManager
 from .config import get_settings
+from .history_store import HistoryStore, history_from_settings
 from .memory import ChatMemory, memory_from_settings
 from .observability import MetricsCollector
 from .rate_limiter import (
@@ -15,6 +16,7 @@ from .sessions import InMemorySessionStore
 _settings = get_settings()
 _session_store = InMemorySessionStore(default_memory_limit=_settings.memory_default)
 _chat_memory = memory_from_settings(_settings)
+_history_store = history_from_settings(_settings)
 _provider_manager = ProviderManager()
 _rate_limiter = rate_limiter_from_settings(_settings)
 _rate_limit_bypass_store = RateLimitBypassStore()
@@ -31,6 +33,12 @@ def get_chat_memory() -> ChatMemory:
     """Return the configured chat memory backend."""
 
     return _chat_memory
+
+
+def get_history_store() -> HistoryStore:
+    """Return the configured history store backend."""
+
+    return _history_store
 
 
 def get_provider_manager() -> ProviderManager:
@@ -71,6 +79,13 @@ def set_chat_memory(memory: ChatMemory) -> None:
     _chat_memory = memory
 
 
+def set_history_store(store: HistoryStore) -> None:
+    """Override the global history store (primarily for tests)."""
+
+    global _history_store
+    _history_store = store
+
+
 def set_provider_manager(manager: ProviderManager) -> None:
     """Override the provider manager instance (primarily for tests)."""
 
@@ -101,14 +116,17 @@ def set_metrics_collector(collector: MetricsCollector) -> None:
 
 __all__ = [
     "ChatMemory",
+    "HistoryStore",
     "ProviderManager",
     "get_chat_memory",
+    "get_history_store",
     "get_rate_limit_bypass_store",
     "get_metrics_collector",
     "get_provider_manager",
     "get_rate_limiter",
     "get_session_store",
     "set_chat_memory",
+    "set_history_store",
     "set_metrics_collector",
     "set_rate_limit_bypass_store",
     "set_provider_manager",

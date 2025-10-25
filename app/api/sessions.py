@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Sequence
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response, status
@@ -16,7 +16,14 @@ from ..agents.manager import (
     ProviderNotRegisteredError,
 )
 from ..config import get_settings
-from ..dependencies import ChatMemory, get_chat_memory, get_provider_manager, get_session_store
+from ..dependencies import (
+    ChatMemory,
+    HistoryStore,
+    get_chat_memory,
+    get_history_store,
+    get_provider_manager,
+    get_session_store,
+)
 from ..errors import APIError
 from ..memory import ChatMessage as MemoryChatMessage, InvalidMemoryLimitError
 from ..sessions import InMemorySessionStore, Session, SessionNotFoundError
@@ -126,6 +133,42 @@ def _provider_to_payload(message: ProviderChatMessage) -> MessagePayload:
     )
 
 
+async def _persist_session_metadata(
+    history_store: HistoryStore, session: Session
+) -> None:
+    try:
+        await history_store.record_session(session)
+    except Exception:  # pragma: no cover - defensive logging
+        logger.exception(
+            "history_store_session_failed",
+            extra={"event": "history_store_session_failed", "session_id": str(session.id)},
+        )
+
+
+async def _persist_messages(
+    history_store: HistoryStore, session_id: UUID, messages: Sequence[MemoryChatMessage]
+) -> None:
+    if not messages:
+        return
+    try:
+        await history_store.record_messages(session_id, list(messages))
+    except Exception:  # pragma: no cover - defensive logging
+        logger.exception(
+            "history_store_messages_failed",
+            extra={"event": "history_store_messages_failed", "session_id": str(session_id)},
+        )
+
+
+async def _remove_history(history_store: HistoryStore, session_id: UUID) -> None:
+    try:
+        await history_store.delete_session(session_id)
+    except Exception:  # pragma: no cover - defensive logging
+        logger.exception(
+            "history_store_delete_failed",
+            extra={"event": "history_store_delete_failed", "session_id": str(session_id)},
+        )
+
+
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
@@ -138,6 +181,7 @@ async def create_session(
     store: InMemorySessionStore = Depends(get_session_store),
     memory: ChatMemory = Depends(get_chat_memory),
     providers: ProviderManager = Depends(get_provider_manager),
+    history_store: HistoryStore = Depends(get_history_store),
 ) -> SessionResponse:
     """Create a new chat session with optional provider preferences."""
 
@@ -176,6 +220,8 @@ async def create_session(
         metadata=request.metadata,
     )
 
+    await _persist_session_metadata(history_store, session)
+
     initial_prompt = settings.initial_system_prompt
     if initial_prompt:
         system_message = MemoryChatMessage(role="system", content=initial_prompt)
@@ -191,6 +237,7 @@ async def create_session(
                 code="invalid_memory_limit",
                 message=str(exc),
             ) from exc
+        await _persist_messages(history_store, session.id, [system_message])
 
     logger.info(
         "session_created",
@@ -217,6 +264,7 @@ async def post_message(
     store: InMemorySessionStore = Depends(get_session_store),
     memory: ChatMemory = Depends(get_chat_memory),
     providers: ProviderManager = Depends(get_provider_manager),
+    history_store: HistoryStore = Depends(get_history_store),
 ) -> MessageResponse:
     """Handle a new chat message for the given session."""
 
@@ -381,6 +429,12 @@ async def post_message(
             message=str(exc),
         ) from exc
 
+    await _persist_messages(
+        history_store,
+        session_id,
+        [user_memory_message, assistant_memory_message],
+    )
+
     final_history = await memory.get(session_id)
 
     return MessageResponse(
@@ -401,6 +455,7 @@ async def delete_session(
     session_id: UUID,
     store: InMemorySessionStore = Depends(get_session_store),
     memory: ChatMemory = Depends(get_chat_memory),
+    history_store: HistoryStore = Depends(get_history_store),
 ) -> Response:
     """Delete an existing session and clear associated memory."""
 
@@ -418,6 +473,7 @@ async def delete_session(
         ) from exc
 
     await memory.clear(session_id)
+    await _remove_history(history_store, session_id)
     logger.info(
         "session_deleted",
         extra={"event": "session_deleted", "session_id": str(session_id)},

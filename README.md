@@ -15,6 +15,8 @@ tooling for runtime control and observability.
   `fetch`) while delegating tool selection to the LLM.
 - **Session-based memory** – In-memory or Redis-backed transcript storage with
   configurable retention limits and per-session overrides.
+- **History archiving** – Optional MySQL, MongoDB, or Redis persistence for
+  completed exchanges while retaining a no-storage mode for ephemeral chats.
 - **Resilience tooling** – Provider fallback, structured error responses, and
   optional Redis-backed distributed rate limiting.
 - **Security & governance** – Token-protected admin APIs for rate limit bypass
@@ -186,6 +188,27 @@ as the default backend via environment configuration (for example,
   "options": { "tool_name": "summarise" }
 }
 ```
+
+### History storage configuration
+
+By default transcripts are not archived outside the in-memory/Redis chat
+context. Set `HISTORY_STORAGE_BACKEND` to one of `none`, `mysql`, `mongodb`, or
+`redis` to enable long-term storage. Each backend has dedicated settings that
+must be populated alongside the selector:
+
+- **none** – disables archival storage and keeps conversations ephemeral.
+- **mysql** – provide `HISTORY_MYSQL_HOST`, `HISTORY_MYSQL_PORT`,
+  `HISTORY_MYSQL_USER`, and `HISTORY_MYSQL_DATABASE`. Optional fields allow you
+  to override the session/message table names. The service creates the tables on
+  demand when they do not exist.
+- **mongodb** – configure `HISTORY_MONGODB_URI` and
+  `HISTORY_MONGODB_DATABASE` plus optional collection names. A
+  `motor`-powered client handles inserts and index creation.
+- **redis** – set `HISTORY_REDIS_URL` or reuse `REDIS_URL` to push session
+  metadata and messages into Redis lists.
+
+The `HISTORY_NAMESPACE` setting scopes keys/records per deployment so multiple
+environments can share the same infrastructure without collisions.
 
 ### 3. Run the API server
 ```bash
