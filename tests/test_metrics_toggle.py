@@ -17,7 +17,9 @@ from app.agents.manager import (
 )
 from app.config import Settings
 from app.main import create_app
+from app.memory import InMemoryChatMemory
 from app.observability import MetricsCollector
+from app.rate_limiter import InMemoryRateLimiter
 
 
 class _SilentProvider:
@@ -43,6 +45,8 @@ def test_metrics_enabled_records_requests(monkeypatch) -> None:
 
     original_manager = dependencies.get_provider_manager()
     original_metrics = dependencies.get_metrics_collector()
+    original_memory = dependencies.get_chat_memory()
+    original_rate_limiter = dependencies.get_rate_limiter()
 
     manager = ProviderManager()
     provider = _SilentProvider()
@@ -51,6 +55,8 @@ def test_metrics_enabled_records_requests(monkeypatch) -> None:
 
     dependencies.set_provider_manager(manager)
     dependencies.set_metrics_collector(MetricsCollector())
+    dependencies.set_chat_memory(InMemoryChatMemory(default_limit=10, max_limit=50))
+    dependencies.set_rate_limiter(InMemoryRateLimiter(rate=100, capacity=100))
     _override_settings(monkeypatch, metrics_enabled=True)
 
     try:
@@ -58,17 +64,19 @@ def test_metrics_enabled_records_requests(monkeypatch) -> None:
         client = TestClient(app)
 
         before = asyncio.run(dependencies.get_metrics_collector().snapshot())
-        response = client.get("/")
-        assert response.status_code == 200
+        response = client.post("/sessions", json={})
+        assert response.status_code == 201
         metrics_response = client.get("/metrics")
         assert metrics_response.status_code == 200
 
         after = asyncio.run(dependencies.get_metrics_collector().snapshot())
-        assert after["requests_total"] > before["requests_total"]
+        assert after["requests_total"] == before["requests_total"] + 1
         assert "/metrics" in {route.path for route in app.router.routes}
     finally:
         dependencies.set_provider_manager(original_manager)
         dependencies.set_metrics_collector(original_metrics)
+        dependencies.set_chat_memory(original_memory)
+        dependencies.set_rate_limiter(original_rate_limiter)
 
 
 def test_metrics_disabled_hides_route_and_middleware(monkeypatch) -> None:

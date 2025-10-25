@@ -230,20 +230,39 @@ def create_app() -> FastAPI:
     if settings.metrics_enabled:
         metrics = get_metrics_collector()
 
+        def _should_track_metrics(request: Request) -> bool:
+            """Return True when the request should contribute to service metrics."""
+
+            method = request.method.upper()
+            path = request.url.path
+            if method == "POST" and path == "/sessions":
+                return True
+            if (
+                method == "POST"
+                and path.startswith("/sessions/")
+                and path.endswith("/messages")
+            ):
+                return True
+            return False
+
         @application.middleware("http")
         async def _metrics_middleware(
             request: Request,
             call_next: Callable[[Request], Awaitable[Response]],
         ) -> Response:
-            await metrics.record_request(request.method)
-            start_time = perf_counter()
+            track_metrics = _should_track_metrics(request)
+            start_time = perf_counter() if track_metrics else None
+            if track_metrics:
+                await metrics.record_request(request.method)
             try:
                 response = await call_next(request)
             except Exception:
-                await metrics.record_exception()
+                if track_metrics:
+                    await metrics.record_exception()
                 raise
-            duration = perf_counter() - start_time
-            await metrics.record_response(response.status_code, duration)
+            if track_metrics and start_time is not None:
+                duration = perf_counter() - start_time
+                await metrics.record_response(response.status_code, duration)
             return response
 
         application.include_router(metrics_router)
