@@ -339,9 +339,10 @@ async def get_active_session_messages(
         ) from exc
 
     history = await memory.get(session_id)
+    visible_history = [message for message in history if message.role != "system"]
     return [
         ActiveMessage(role=message.role, content=message.content, created_at=message.created_at)
-        for message in history
+        for message in visible_history
     ]
 
 
@@ -413,6 +414,7 @@ async def get_history_session_messages(
 
     limit, offset = _validate_pagination(limit, offset)
     messages = await history_store.get_session_messages(session_id, limit=limit, offset=offset)
+    visible_messages = [message for message in messages if message.role != "system"]
     return HistoryMessagesResponse(
         session_id=session_id,
         messages=[
@@ -422,11 +424,11 @@ async def get_history_session_messages(
                 created_at=message.created_at,
                 stored_at=message.stored_at,
             )
-            for message in messages
+            for message in visible_messages
         ],
         limit=limit,
         offset=offset,
-        count=len(messages),
+        count=len(visible_messages),
     )
 
 
