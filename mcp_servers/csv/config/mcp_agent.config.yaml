@@ -1,0 +1,22 @@
+# MCP agent configuration for CSV RAG server
+# این فایل سرور RAG برای جستجوی معنایی در فایل‌های CSV را پیکربندی می‌کند.
+
+mcp:
+  servers:
+    csv-rag:
+      transport: stdio
+      command: python
+      args:
+        - -m
+        - mcp_servers.csv.mcp_csv
+      env:
+        # مسیرهای فایل‌های RAG (به صورت پیش‌فرض از مسیر نسبی استفاده می‌شود)
+        # RAG_INDEX_PATH: /absolute/path/to/rag.index
+        # RAG_META_PATH: /absolute/path/to/rag_meta.json
+        # RAG_CSV_PATH: /absolute/path/to/data.csv
+
+        # مدل embedding (اختیاری)
+        # EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
+
+        # سطح لاگ (اختیاری)
+        LOG_LEVEL: INFO
