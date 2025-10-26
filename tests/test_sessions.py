@@ -34,6 +34,7 @@ from app.main import create_app
 from app.memory import ChatMessage as MemoryChatMessage, InMemoryChatMemory
 from app.observability import MetricsCollector
 from app.rate_limiter import InMemoryRateLimiter, RateLimitBypassStore
+from app.config import get_settings
 from app.agents.manager import (
     ChatMessage as ProviderChatMessage,
     ChatResponse,
@@ -119,6 +120,10 @@ def test_session_lifecycle_endpoints_manage_store_and_memory() -> None:
         set_provider_manager(manager)
 
         app = create_app()
+        # Re-register the silent provider after app initialisation to override
+        # the OpenRouter-backed provider registered during startup.
+        manager.register(provider, replace=True)
+        manager.set_default(provider.name)
         transport = ASGITransport(app=app)
 
         try:
@@ -184,6 +189,8 @@ def test_get_session_returns_metadata_and_history() -> None:
         set_provider_manager(manager)
 
         app = create_app()
+        manager.register(provider, replace=True)
+        manager.set_default(provider.name)
         transport = ASGITransport(app=app)
 
         try:
@@ -212,6 +219,80 @@ def test_get_session_returns_metadata_and_history() -> None:
                 missing_response = await client.get(f"/sessions/{uuid4()}")
                 assert missing_response.status_code == 404
         finally:
+            set_session_store(original_store)
+            set_chat_memory(original_memory)
+            set_history_store(original_history)
+            set_provider_manager(original_manager)
+            set_rate_limiter(original_limiter)
+            set_rate_limit_bypass_store(original_bypass)
+            set_metrics_collector(original_metrics)
+
+    asyncio.run(_run())
+
+
+def test_session_history_excludes_system_messages() -> None:
+    async def _run() -> None:
+        original_store = get_session_store()
+        original_memory = get_chat_memory()
+        original_history = get_history_store()
+        original_limiter = get_rate_limiter()
+        original_bypass = get_rate_limit_bypass_store()
+        original_metrics = get_metrics_collector()
+        original_manager = get_provider_manager()
+        original_prompt = os.environ.get("INITIAL_SYSTEM_PROMPT")
+
+        store = InMemorySessionStore()
+        memory = InMemoryChatMemory(default_limit=5)
+        history = NoOpHistoryStore()
+        limiter = InMemoryRateLimiter(rate=1000, capacity=1000)
+        bypass = RateLimitBypassStore()
+        metrics = MetricsCollector()
+        manager = ProviderManager()
+        provider = _SilentProvider()
+        manager.register(provider)
+        manager.set_default(provider.name)
+
+        os.environ["INITIAL_SYSTEM_PROMPT"] = "سیستم نباید نمایش داده شود"
+        get_settings.cache_clear()
+
+        set_session_store(store)
+        set_chat_memory(memory)
+        set_history_store(history)
+        set_rate_limiter(limiter)
+        set_rate_limit_bypass_store(bypass)
+        set_metrics_collector(metrics)
+        set_provider_manager(manager)
+
+        app = create_app()
+        manager.register(provider, replace=True)
+        manager.set_default(provider.name)
+        transport = ASGITransport(app=app)
+
+        try:
+            async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+                session_response = await client.post("/sessions", json={})
+                session_response.raise_for_status()
+                session_id = UUID(session_response.json()["id"])
+
+                detail_response = await client.get(f"/sessions/{session_id}")
+                detail_response.raise_for_status()
+                detail_history = detail_response.json()["history"]
+                assert detail_history == []
+
+                message_response = await client.post(
+                    f"/sessions/{session_id}/messages",
+                    json={"content": "سلام"},
+                )
+                message_response.raise_for_status()
+                response_history = message_response.json()["history"]
+                assert all(message["role"] != "system" for message in response_history)
+        finally:
+            if original_prompt is None:
+                os.environ.pop("INITIAL_SYSTEM_PROMPT", None)
+            else:
+                os.environ["INITIAL_SYSTEM_PROMPT"] = original_prompt
+            get_settings.cache_clear()
+
             set_session_store(original_store)
             set_chat_memory(original_memory)
             set_history_store(original_history)

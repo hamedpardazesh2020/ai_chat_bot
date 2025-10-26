@@ -127,6 +127,14 @@ def _memory_to_payload(message: MemoryChatMessage) -> MessagePayload:
     )
 
 
+def _filter_visible_messages(
+    messages: Sequence[MemoryChatMessage],
+) -> list[MemoryChatMessage]:
+    """Return history entries that should be exposed to API consumers."""
+
+    return [message for message in messages if message.role != "system"]
+
+
 def _provider_to_payload(message: ProviderChatMessage) -> MessagePayload:
     """Convert a provider message into the API payload representation."""
 
@@ -285,11 +293,12 @@ async def get_session(
         ) from exc
 
     history = await memory.get(session_id)
+    visible_history = _filter_visible_messages(history)
     session_payload = _session_to_payload(session)
 
     return SessionDetailResponse(
         **session_payload.model_dump(),
-        history=[_memory_to_payload(message) for message in history],
+        history=[_memory_to_payload(message) for message in visible_history],
     )
 
 
@@ -477,12 +486,13 @@ async def post_message(
     )
 
     final_history = await memory.get(session_id)
+    visible_history = _filter_visible_messages(final_history)
 
     return MessageResponse(
         session_id=session.id,
         message=_provider_to_payload(assistant_message),
         usage=dict(response.usage) if isinstance(response.usage, Mapping) else None,
-        history=[_memory_to_payload(message) for message in final_history],
+        history=[_memory_to_payload(message) for message in visible_history],
     )
 
 
