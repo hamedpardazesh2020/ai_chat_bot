@@ -1,15 +1,19 @@
 from mcp.server.fastmcp import FastMCP, Context
-import uvicorn
 import json
 import faiss
 from sentence_transformers import SentenceTransformer
 from typing import List, Dict, Any
 import os
+from pathlib import Path
 import tensorflow as tf
 tf.get_logger().setLevel('ERROR')
+
 # ---------- تنظیمات ----------
-INDEX_PATH = os.getenv("RAG_INDEX_PATH", "rag.index")
-META_PATH  = os.getenv("RAG_META_PATH", "rag_meta.json")
+# مسیر پوشه‌ای که فایل سرور در آن قرار دارد
+_CURRENT_DIR = Path(__file__).resolve().parent
+
+INDEX_PATH = os.getenv("RAG_INDEX_PATH", str(_CURRENT_DIR / "rag.index"))
+META_PATH  = os.getenv("RAG_META_PATH", str(_CURRENT_DIR / "rag_meta.json"))
 
 # ---------- بارگذاری مدل ----------
 _model: SentenceTransformer = None
@@ -60,18 +64,39 @@ def search_internal(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
     return res
 
 # ---------- تعریف MCP سرور ----------
-app = FastMCP(name="csv-rag-mcp")  # حذف پارامتر 'description'
+server = FastMCP(
+    name="csv-rag",
+    instructions=(
+        "Search CSV-based data using RAG (Retrieval Augmented Generation). "
+        "Use the `rag_search` tool to find relevant rows based on semantic similarity."
+    ),
+)
 
-@app.tool()
+@server.tool()
 def rag_search(ctx: Context, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
     """
-    جستجو بر اساس query و ایندکس
+    جستجو بر اساس query و ایندکس RAG.
+
+    Args:
+        query: متن جستجو برای یافتن ردیف‌های مشابه
+        top_k: تعداد نتایج برتر (پیش‌فرض ۵)
+
+    Returns:
+        لیستی از دیکشنری‌ها حاوی ردیف‌های مشابه و امتیاز آن‌ها
     """
     return search_internal(query, top_k)
 
 if __name__ == "__main__":
-    # بارگذاری ایندکس و اجرای سرور MCP
-    load_index()
+    import logging
 
-    # استفاده از uvicorn برای اجرا
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # تنظیم سطح log
+    logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+
+    # بارگذاری ایندکس و اجرای سرور MCP
+    if not load_index():
+        logging.warning(
+            "Index files not found. Run generate_embeddings.py first to create the RAG index."
+        )
+
+    # اجرای سرور MCP با stdio transport
+    server.run()

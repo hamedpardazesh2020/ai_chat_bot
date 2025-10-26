@@ -3,15 +3,20 @@ import pandas as pd
 from sentence_transformers import SentenceTransformer
 import faiss
 import json
-from typing import Optional, List, Tuple, Dict, Any  # افزودن 'Any' برای رفع خطا
+from typing import Optional, List, Tuple, Dict, Any
+from pathlib import Path
 import tensorflow as tf
 tf.get_logger().setLevel('ERROR')
+
 # ---------- تنظیمات ----------
+# مسیر پوشه‌ای که فایل در آن قرار دارد
+_CURRENT_DIR = Path(__file__).resolve().parent
+
 EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-INDEX_PATH = os.getenv("RAG_INDEX_PATH", "rag.index")
-META_PATH  = os.getenv("RAG_META_PATH", "rag_meta.json")
-CSV_PATH   = os.getenv("RAG_CSV_PATH", "data.csv")   # مسیر فایل CSV
-TEXT_COLS  = os.getenv("RAG_TEXT_COLS", "")          # مانند "title,body,notes"
+INDEX_PATH = os.getenv("RAG_INDEX_PATH", str(_CURRENT_DIR / "rag.index"))
+META_PATH  = os.getenv("RAG_META_PATH", str(_CURRENT_DIR / "rag_meta.json"))
+CSV_PATH   = os.getenv("RAG_CSV_PATH", str(_CURRENT_DIR / "data.csv"))
+TEXT_COLS  = os.getenv("RAG_TEXT_COLS", "")  # مانند "مدل خودرو,شرکت سازنده,روغن موتور"
 
 # ---------- لود مدل ----------
 _model: SentenceTransformer = None
