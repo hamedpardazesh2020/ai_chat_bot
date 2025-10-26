@@ -154,6 +154,75 @@ def test_session_lifecycle_endpoints_manage_store_and_memory() -> None:
     asyncio.run(_run())
 
 
+def test_get_session_returns_metadata_and_history() -> None:
+    async def _run() -> None:
+        original_store = get_session_store()
+        original_memory = get_chat_memory()
+        original_history = get_history_store()
+        original_limiter = get_rate_limiter()
+        original_bypass = get_rate_limit_bypass_store()
+        original_metrics = get_metrics_collector()
+        original_manager = get_provider_manager()
+
+        store = InMemorySessionStore()
+        memory = InMemoryChatMemory(default_limit=5)
+        history = NoOpHistoryStore()
+        limiter = InMemoryRateLimiter(rate=1000, capacity=1000)
+        bypass = RateLimitBypassStore()
+        metrics = MetricsCollector()
+        manager = ProviderManager()
+        provider = _SilentProvider()
+        manager.register(provider)
+        manager.set_default(provider.name)
+
+        set_session_store(store)
+        set_chat_memory(memory)
+        set_history_store(history)
+        set_rate_limiter(limiter)
+        set_rate_limit_bypass_store(bypass)
+        set_metrics_collector(metrics)
+        set_provider_manager(manager)
+
+        app = create_app()
+        transport = ASGITransport(app=app)
+
+        try:
+            async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+                session_response = await client.post("/sessions", json={})
+                session_response.raise_for_status()
+                session_id = UUID(session_response.json()["id"])
+
+                await memory.append(session_id, MemoryChatMessage(role="user", content="سلام"))
+                await memory.append(
+                    session_id, MemoryChatMessage(role="assistant", content="درود")
+                )
+
+                response = await client.get(f"/sessions/{session_id}")
+                assert response.status_code == 200
+                payload = response.json()
+                assert payload["id"] == str(session_id)
+                assert payload["metadata"] == {}
+                history_payload = payload["history"]
+                assert len(history_payload) >= 2
+                assert history_payload[-2]["role"] == "user"
+                assert history_payload[-2]["content"] == "سلام"
+                assert history_payload[-1]["role"] == "assistant"
+                assert history_payload[-1]["content"] == "درود"
+
+                missing_response = await client.get(f"/sessions/{uuid4()}")
+                assert missing_response.status_code == 404
+        finally:
+            set_session_store(original_store)
+            set_chat_memory(original_memory)
+            set_history_store(original_history)
+            set_provider_manager(original_manager)
+            set_rate_limiter(original_limiter)
+            set_rate_limit_bypass_store(original_bypass)
+            set_metrics_collector(original_metrics)
+
+    asyncio.run(_run())
+
+
 def test_missing_message_content_returns_readable_validation_error() -> None:
     async def _run() -> None:
         original_store = get_session_store()

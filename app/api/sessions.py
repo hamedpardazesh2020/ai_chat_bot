@@ -56,6 +56,12 @@ class SessionResponse(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class SessionDetailResponse(SessionResponse):
+    """Representation of a chat session alongside its in-memory history."""
+
+    history: list[MessagePayload] = Field(default_factory=list)
+
+
 class MessagePayload(BaseModel):
     """Representation of a chat message returned to API consumers."""
 
@@ -250,6 +256,41 @@ async def create_session(
     )
 
     return _session_to_payload(session)
+
+
+@router.get(
+    "/{session_id}",
+    response_model=SessionDetailResponse,
+    summary="Get a chat session",
+    response_description="Session metadata and current in-memory chat history.",
+)
+async def get_session(
+    session_id: UUID,
+    store: InMemorySessionStore = Depends(get_session_store),
+    memory: ChatMemory = Depends(get_chat_memory),
+) -> SessionDetailResponse:
+    """Return session metadata and buffered chat history."""
+
+    try:
+        session = await store.get_session(session_id)
+    except SessionNotFoundError as exc:
+        logger.info(
+            "session_not_found",
+            extra={"event": "session_not_found", "session_id": str(session_id)},
+        )
+        raise APIError(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code="session_not_found",
+            message=str(exc),
+        ) from exc
+
+    history = await memory.get(session_id)
+    session_payload = _session_to_payload(session)
+
+    return SessionDetailResponse(
+        **session_payload.model_dump(),
+        history=[_memory_to_payload(message) for message in history],
+    )
 
 
 @router.post(
