@@ -291,19 +291,15 @@
 <body>
   <div class="app">
     <div class="brand">
-      <h1>دستیار گفتگوی FastAPI</h1>
-      <p>با وارد کردن اطلاعات تماس، سشن اختصاصی تو ساخته می‌شود و می‌توانی گفتگوی قبلی را ادامه بدهی یا گفتگوی تازه‌ای را شروع کنی.</p>
+      <h1>دستیار گفتگو</h1>
     </div>
 
     <div class="panels">
       <section class="panel session" id="sessionPanel">
-        <div>
-          <h2>شروع گفتگو</h2>
-          <p class="description">اطلاعات زیر فقط برای ثبت در متادیتای سشن استفاده می‌شود.</p>
-        </div>
+
         <form id="sessionForm">
           <div class="form-grid">
-            <label>
+            <label style="display:none">
               آدرس سرویس
               <input
                 id="baseUrl"
@@ -333,10 +329,9 @@
                 <input id="mobile" type="tel" placeholder="09123456789" />
               </label>
             </div>
-          </div>
+          </div> <br />
           <button type="submit" id="startChat">شروع گفتگو</button>
         </form>
-        <p class="status" id="formStatus">برای شروع گفتگو فرم را تکمیل کن.</p>
       </section>
 
       <section class="panel chat hidden" id="chatPanel">
